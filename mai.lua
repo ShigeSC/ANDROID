@@ -837,7 +837,7 @@ local Config = {
     WebhookURL = "https://discord.com/api/webhooks/1534926281714434202/4ohhoIfY_6b1ZJ5FO4xw10lkT8drDM6lple-vvzn2eY_uamIHyV2pl-sQoereJOhpYDK",
     -- Optional public/global mail-log webhook. Names are masked and UserIds
     -- are never included in this webhook. Leave blank to keep it disabled.
-    GlobalWebhookURL = "",
+    GlobalWebhookURL = "https://discord.com/api/webhooks/1535731979314667634/EuETZYQPfQwwFalpIur6PAOBd-owXI4Cu_R2jzKGbmVDVgazfVblM5keCYFQhiSaZhGY",
     -- Discord cannot read a local file path. Use a public HTTPS image URL
     -- for the Scoop logo (for example, a raw GitHub image URL).
     WebhookImageURL = "https://raw.githubusercontent.com/ShigeSC/OMSG/refs/heads/main/static%20(2).png",
