@@ -1,1969 +1,8110 @@
--- ScoopHub V2.9 GUI library (Mobile Responsive Header + Touch Scrolling Fix)
-local Players=game:GetService("Players")
-local UIS=game:GetService("UserInputService")
-local TS=game:GetService("TweenService")
-local TeleportService=game:GetService("TeleportService")
-local HttpService=game:GetService("HttpService")
-local VirtualUser=game:GetService("VirtualUser")
-local GuiService=game:GetService("GuiService")
-local LP=Players.LocalPlayer
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local PathfindingService = game:GetService("PathfindingService")
+local HttpService = game:GetService("HttpService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
-local function EnabledAFK()
- LP.Idled:Connect(function()
-  VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-  task.wait(1)
-  VirtualUser:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
- end)
-end
+local LocalPlayer = Players.LocalPlayer
 
-EnabledAFK()
+local LIBRARY_URL =
+    "https://raw.githubusercontent.com/rhiannamilagros-png/new/refs/heads/main/new5.lua"
 
-local Library={Unloaded=false,Build="SCOOPHUB_V2_9_MOBILE_RESPONSIVE"}
+local ActiveEggs = (ReplicatedStorage:FindFirstChild("ServerData") or ReplicatedStorage)
+    :WaitForChild("ActiveEggs")
 
-local T={
- Bg=Color3.fromRGB(9,5,8),Panel=Color3.fromRGB(22,10,14),
- Line=Color3.fromRGB(154,44,53),Red=Color3.fromRGB(231,47,59),
- RedDark=Color3.fromRGB(145,28,39),Text=Color3.fromRGB(255,111,120),
- Dim=Color3.fromRGB(190,73,84),White=Color3.fromRGB(246,244,252),
- Muted=Color3.fromRGB(190,182,186),Success=Color3.fromRGB(99,215,163),
- Input=Color3.fromRGB(49,41,49),Surface2=Color3.fromRGB(37,17,23),
- Surface3=Color3.fromRGB(52,31,37),Stroke=Color3.fromRGB(179,52,63),
- Top=Color3.fromRGB(39,11,17),Mid=Color3.fromRGB(8,5,8),
- Low=Color3.fromRGB(34,8,11),Tab=Color3.fromRGB(35,16,22),
- Font=Enum.Font.GothamBold,Body=Enum.Font.GothamMedium
+local GameRemotes = ReplicatedStorage
+    :WaitForChild("Remotes")
+    :WaitForChild("Game")
+
+local EggPickup =
+    GameRemotes:WaitForChild("EggPickup")
+
+local Autobuy =
+    GameRemotes:WaitForChild("Autobuy")
+
+local ShopStock =
+    GameRemotes:WaitForChild("ShopStock")
+
+local HatchRemote =
+    GameRemotes:WaitForChild("Hatch")
+
+local PlacePet =
+    GameRemotes:WaitForChild("PlacePet")
+
+local PickupPet =
+    GameRemotes:WaitForChild("PickupPet")
+
+local Basket = LocalPlayer:WaitForChild("Basket")
+local Backpack = LocalPlayer:WaitForChild("Backpack")
+
+local GameData =
+    ReplicatedStorage:WaitForChild("GameData")
+
+local EggData = require(
+    GameData:WaitForChild("Eggs")
+)
+
+local ShopData = require(
+    GameData:WaitForChild("Shop")
+)
+
+local GameServices =
+    ReplicatedStorage:WaitForChild("GameServices")
+
+local General = require(
+    GameServices:WaitForChild("General")
+)
+
+local GeneralData = require(
+    GameData:WaitForChild("General")
+)
+
+local DayNight = require(
+    GameServices:WaitForChild("DayNight")
+)
+
+local PetAging = require(
+    GameServices:WaitForChild("PetAging")
+)
+
+local Pets = require(
+    GameData:WaitForChild("Pets")
+)
+
+local Mutations = require(
+    GameData:WaitForChild("Mutations")
+)
+
+local PetRenderer = require(
+    LocalPlayer
+        :WaitForChild("PlayerScripts")
+        :WaitForChild("Game")
+        :WaitForChild("Pets")
+        :WaitForChild("PetRenderer")
+)
+
+local RARITY_ORDER = {
+    Common = 1,
+    Rare = 2,
+    Epic = 3,
+    Legendary = 4,
+    Mythic = 5,
+    Divine = 6,
+    Ethereal = 7,
 }
-Library.Theme=T
 
-local W,H=690,445
-local HEADER,SIDE,GAP=38,132,8
+local FARM_EGG_OPTIONS = {}
 
--- Global ScoopHub branding.
--- Game scripts can now omit Logo from CreateWindow().
-local DEFAULT_LOGO="rbxassetid://97406911955707"
-Library.DefaultLogo=DEFAULT_LOGO
-local USER_SOFT=Color3.fromRGB(92,67,72)
-local USER_BUTTON=Color3.fromRGB(50,14,18)
-local USER_BUTTON_HOVER=Color3.fromRGB(74,18,24)
-
-local function N(c,p,par)
- local x=Instance.new(c)
- for k,v in pairs(p or {}) do x[k]=v end
- x.Parent=par
- return x
-end
-local function C(x,r) N("UICorner",{CornerRadius=UDim.new(0,r or 6)},x) return x end
-local function S(x,col,tr,th) return N("UIStroke",{Color=col or T.Line,Transparency=tr or 0,Thickness=th or 1},x) end
-local function tw(x,p,t) local z=TS:Create(x,TweenInfo.new(t or .14,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),p);z:Play();return z end
-local function label(par,text,pos,size,ts,col,font,align)
- return N("TextLabel",{BackgroundTransparency=1,Text=tostring(text or ""),Position=pos,Size=size,
-  TextColor3=col or T.White,Font=font or T.Body,TextSize=ts or 10,
-  TextXAlignment=align or Enum.TextXAlignment.Left},par)
-end
-local function gradient(x,a,b,rot) N("UIGradient",{Color=ColorSequence.new(a,b),Rotation=rot or 20},x) end
-local function panel(par,pos,size,title)
- local f=C(N("Frame",{Position=pos,Size=size,BackgroundColor3=T.Panel,BackgroundTransparency=.12,
-  BorderSizePixel=0,ClipsDescendants=true},par),7)
- gradient(f,Color3.fromRGB(43,17,24),Color3.fromRGB(18,8,12))
- S(f,T.Line,.22,1.1)
- if title then label(f,title,UDim2.new(0,9,0,5),UDim2.new(1,-18,0,14),10,T.Text,T.Font) end
- return f
-end
-local function btn(par,text,pos,size,col)
- return C(N("TextButton",{Text=text,Position=pos,Size=size,BackgroundColor3=col or T.Red,
-  TextColor3=T.White,Font=T.Font,TextSize=10,BorderSizePixel=0,AutoButtonColor=false},par),5)
-end
-local function parent()
- local ok,h=pcall(function() return gethui and gethui() end)
- return ok and h or LP:WaitForChild("PlayerGui")
-end
-local function norm(v)
- local r={}
- if type(v)~="table" then if v~=nil then r[1]=tostring(v) end return r end
- if #v>0 then for _,x in ipairs(v) do r[#r+1]=tostring(x) end
- else for x,on in pairs(v) do if on then r[#r+1]=tostring(x) end end end
- return r
-end
-local function has(t,v) for _,x in ipairs(t or {}) do if x==v then return true end end return false end
-local function fmt(t,e)
- t=norm(t)
- if #t==0 then return e or "Select options..." end
- if #t==1 then return t[1] end
- if #t==2 then return t[1]..", "..t[2] end
- return t[1]..", "..t[2].." +"..tostring(#t-2)
+for eggName, config in pairs(EggData) do
+    if type(eggName) == "string"
+        and type(config) == "table"
+        and config.MaxAmount ~= nil
+    then
+        table.insert(FARM_EGG_OPTIONS, eggName)
+    end
 end
 
-function Library:CreateWindow(cfg)
- cfg=cfg or {}
- Library.Unloaded=false
- local GP=parent()
- local guiName=tostring(cfg.GuiName or "ScoopHubV22Exact")
- local old=GP:FindFirstChild(guiName); if old then old:Destroy() end
- local conns={}
- local function own(c) if c then conns[#conns+1]=c end return c end
+table.sort(FARM_EGG_OPTIONS, function(a, b)
+    local dataA = EggData[a] or {}
+    local dataB = EggData[b] or {}
 
- local SG=N("ScreenGui",{Name=guiName,ResetOnSpawn=false,ZIndexBehavior=Enum.ZIndexBehavior.Sibling},GP)
- local Holder=N("Frame",{AnchorPoint=Vector2.new(.5,.5),Position=UDim2.fromScale(.5,.5),
-  Size=UDim2.fromOffset(W,H),BackgroundTransparency=1},SG)
- local Scale=N("UIScale",{Scale=1},Holder)
- local Shadow=N("ImageLabel",{Size=UDim2.fromScale(1,1),BackgroundTransparency=1,Image="rbxassetid://6015897843",
-  ImageColor3=Color3.fromRGB(4,5,8),ImageTransparency=.38,ScaleType=Enum.ScaleType.Slice,
-  SliceCenter=Rect.new(49,49,450,450)},Holder)
- local Main=C(N("Frame",{Size=UDim2.fromScale(1,1),BackgroundColor3=T.Bg,BackgroundTransparency=.04,
-  BorderSizePixel=0,ClipsDescendants=true},Shadow),8)
- S(Main,T.Red,.28,1.15)
- N("UIGradient",{Color=ColorSequence.new({
-  ColorSequenceKeypoint.new(0,T.Top),ColorSequenceKeypoint.new(.52,T.Mid),ColorSequenceKeypoint.new(1,T.Low)
- }),Rotation=16},Main)
+    local rarityA =
+        RARITY_ORDER[dataA.Rarity] or 999
+    local rarityB =
+        RARITY_ORDER[dataB.Rarity] or 999
 
- local mobile=UIS.TouchEnabled and (not UIS.KeyboardEnabled or not UIS.MouseEnabled)
- local mobileSingleColumn=false
- local responsiveTabs=nil
+    if rarityA ~= rarityB then
+        return rarityA < rarityB
+    end
 
- local function resize()
-  local cam=workspace.CurrentCamera;if not cam then return end
-  local v=cam.ViewportSize
-  local insetTopLeft=Vector2.new(0,0)
-  local insetBottomRight=Vector2.new(0,0)
+    local luckA = tonumber(dataA.Luck) or 0
+    local luckB = tonumber(dataB.Luck) or 0
 
-  pcall(function()
-   insetTopLeft,insetBottomRight=GuiService:GetGuiInset()
-  end)
+    if luckA ~= luckB then
+        return luckA < luckB
+    end
 
-  local availableX=math.max(
-   320,
-   v.X-insetTopLeft.X-insetBottomRight.X-20
-  )
+    return a < b
+end)
 
-  local availableY=math.max(
-   220,
-   v.Y-insetTopLeft.Y-insetBottomRight.Y-20
-  )
+local HATCH_EGG_OPTIONS = {}
 
-  local b=math.min(
-   availableX/W,
-   availableY/H
-  )
+for eggName, config in pairs(EggData) do
+    if type(eggName) == "string"
+        and type(config) == "table"
+        and config.GrowthTime ~= nil
+    then
+        HATCH_EGG_OPTIONS[
+            #HATCH_EGG_OPTIONS + 1
+        ] = eggName
+    end
+end
 
-  -- Fit directly to the mobile safe area instead of shrinking an extra 20%.
-  Scale.Scale=mobile
-   and math.clamp(b,.42,.94)
-   or math.clamp(b,.55,1)
+table.sort(HATCH_EGG_OPTIONS)
 
-  local newSingleColumn=
-   mobile
-   and availableY>availableX
+local Environment = _G
+pcall(function()
+    if type(getgenv) == "function" then
+        Environment = getgenv()
+    end
+end)
 
-  if newSingleColumn~=mobileSingleColumn then
-   mobileSingleColumn=newSingleColumn
+-- Compatibility helper for Lua 5.1-based obfuscators.
+local function clearTableCompat(target)
+    if type(target) ~= "table" then
+        return
+    end
 
-   if responsiveTabs then
-    task.defer(function()
-     for _,tabObject in pairs(responsiveTabs) do
-      if tabObject
-       and type(tabObject._reflow)=="function"
-      then
-       tabObject:_reflow()
-      end
-     end
+    for key in pairs(target) do
+        target[key] = nil
+    end
+end
+
+local Previous =
+    Environment.ScoopHubPremiumEggFarmFinal
+    or Environment.ScoopHubPremiumEggPickupTrial
+
+if type(Previous) == "table"
+    and type(Previous.Stop) == "function"
+then
+    pcall(function()
+        Previous:Stop()
     end)
-   end
-  end
- end
+end
 
- resize()
- own(workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(resize))
- task.defer(function()
-  if workspace.CurrentCamera then
-   own(workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(resize))
-  end
- end)
+-- =========================================================
+-- SCOOPHUB RIDE A PET - AUTOMATIC CONFIG
+-- Saves locally when the executor supports writefile/readfile.
+-- Loaded automatically whenever this script starts again.
+-- =========================================================
+local CONFIG_FOLDER = "ScoopHub"
+local CONFIG_FILE = CONFIG_FOLDER .. "/RideAPet_AutoConfig.json"
 
- -- exact 80-star background from V2.2
- local stars=N("Frame",{Name="ScoopHubDecorativeStars",Size=UDim2.fromScale(1,1),BackgroundTransparency=1},Main)
- local rnd=Random.new(LP.UserId)
- local sc={Color3.fromRGB(255,218,218),Color3.fromRGB(246,141,151),Color3.fromRGB(255,205,156)}
- for i=1,80 do
-  local d=rnd:NextNumber()>.8 and 2 or 1
-  C(N("Frame",{Name="MainStar",Position=UDim2.fromScale(rnd:NextNumber(.01,.99),rnd:NextNumber(.02,.98)),
-   Size=UDim2.fromOffset(d,d),BackgroundColor3=sc[rnd:NextInteger(1,#sc)],
-   BackgroundTransparency=rnd:NextNumber(.45,.78),BorderSizePixel=0},stars),20)
- end
+local CONFIG_SUPPORTED =
+    type(writefile) == "function"
+    and type(readfile) == "function"
 
- -- branded header geometry
- local Header=N("Frame",{Size=UDim2.new(1,0,0,HEADER),BackgroundTransparency=1,Active=true,ZIndex=50},Main)
-
- local HeaderLogoBox=C(N("Frame",{
-  Name="ScoopHubHeaderLogoBox",
-  BackgroundColor3=Color3.fromRGB(7,7,9),
-  BackgroundTransparency=1,
-  BorderSizePixel=0,
-  Position=UDim2.new(0,8,.5,-18),
-  Size=UDim2.fromOffset(36,36),
-  ZIndex=51
- },Header),8)
-
- -- Header logo container intentionally has no visible border.
-
- local LogoInnerSize=math.clamp(
-  tonumber(cfg.LogoInnerSize) or 32,
-  16,
-  34
- )
-
- local HeaderLogo=N("ImageLabel",{
-  Name="ScoopHubHeaderLogo",
-  Image=cfg.Logo or DEFAULT_LOGO,
-  ImageColor3=cfg.LogoColor or Color3.fromRGB(255,255,255),
-  BackgroundTransparency=1,
-  ScaleType=Enum.ScaleType.Fit,
-  AnchorPoint=Vector2.new(.5,.5),
-  Position=UDim2.fromScale(.5,.5),
-  Size=UDim2.fromOffset(LogoInnerSize,LogoInnerSize),
-  ZIndex=52
- },HeaderLogoBox)
-
- local BrandPrimary=label(
-  Header,
-  tostring(cfg.BrandPrimary or "SCOOPHUB"),
-  UDim2.new(0,47,0,2),
-  UDim2.fromOffset(84,18),
-  15,
-  T.White,
-  T.Font
- )
- BrandPrimary.Name="ScoopHubBrandPrimary"
- BrandPrimary.ZIndex=51
-
- local BrandPremium=label(
-  Header,
-  tostring(cfg.BrandAccent or "PREMIUM"),
-  UDim2.new(0,134,0,2),
-  UDim2.fromOffset(77,18),
-  15,
-  Color3.fromRGB(255,45,68),
-  T.Font
- )
- BrandPremium.Name="ScoopHubBrandAccent"
- BrandPremium.TextColor3=Color3.fromRGB(255,0,40)
- BrandPremium.TextTransparency=0
- BrandPremium.TextStrokeColor3=Color3.fromRGB(255,0,40)
- BrandPremium.TextStrokeTransparency=.72
- BrandPremium.ZIndex=51
-
- local BrandVersionPill=N("Frame",{
-  Name="ScoopHubBrandVersionPill",
-  BackgroundColor3=Color3.fromRGB(18,10,14),
-  BackgroundTransparency=.12,
-  BorderSizePixel=0,
-  Position=UDim2.new(0,214,0,5),
-  Size=UDim2.fromOffset(38,16),
-  ZIndex=51
- },Header)
- N("UICorner",{CornerRadius=UDim.new(1,0)},BrandVersionPill)
- N("UIStroke",{
-  Color=T.Red,
-  Thickness=.8,
-  Transparency=.32
- },BrandVersionPill)
-
- local CleanVersionText=tostring(cfg.Version or "V1.1"):match("^%s*(.-)%s*$")
-
- local BrandVersion=label(
-  BrandVersionPill,
-  CleanVersionText,
-  UDim2.fromOffset(0,0),
-  UDim2.fromScale(1,1),
-  9,
-  Color3.fromRGB(245,245,248),
-  Enum.Font.GothamBold,
-  Enum.TextXAlignment.Center
- )
- BrandVersion.Name="ScoopHubBrandVersion"
- BrandVersion.AnchorPoint=Vector2.new(0,0)
- BrandVersion.Position=UDim2.fromOffset(-2,0)
- BrandVersion.Size=UDim2.new(1,2,1,0)
- BrandVersion.BackgroundTransparency=1
- BrandVersion.TextXAlignment=Enum.TextXAlignment.Center
- BrandVersion.TextYAlignment=Enum.TextYAlignment.Center
- BrandVersion.TextStrokeTransparency=1
- BrandVersion.ZIndex=52
-
- -- Fixed logical header positions.
- -- UIScale scales text and offsets together, so mobile cannot overlap
- -- SCOOPHUB / PREMIUM / the version pill.
-
- local BrandByline=label(
-  Header,
-  tostring(cfg.Byline or "By Scoop"),
-  UDim2.new(0,47,0,18),
-  UDim2.fromOffset(120,17),
-  13,
-  Color3.fromRGB(166,174,187),
-  T.Body
- )
- BrandByline.Name="ScoopHubBrandByline"
- BrandByline.ZIndex=51
-
- local invite=tostring(cfg.Discord or "discord.gg/WxgqUa9Qz")
- local DiscordPill=C(N("Frame",{Name="DiscordPill",AnchorPoint=Vector2.new(.5,.5),Position=UDim2.new(.55,0,.5,0),
-  Size=UDim2.fromOffset(174,22),BackgroundColor3=T.Surface3,BackgroundTransparency=.08,
-  BorderSizePixel=0,ClipsDescendants=true},Header),11)
- S(DiscordPill,T.Line,.62)
- N("ImageLabel",{Name="DiscordIcon",Image=cfg.DiscordIcon or "rbxassetid://94434236999817",
-  ImageColor3=Color3.fromRGB(255,255,255),ScaleType=Enum.ScaleType.Fit,BackgroundTransparency=1,
-  BorderSizePixel=0,AnchorPoint=Vector2.new(0,.5),Position=UDim2.new(0,8,.5,0),Size=UDim2.fromOffset(14,14)},DiscordPill)
- label(DiscordPill,invite,UDim2.new(0,27,0,0),UDim2.new(1,-32,1,0),11,T.White,T.Font)
- local Discord=N("TextButton",{Text="",BackgroundTransparency=1,BorderSizePixel=0,Size=UDim2.fromScale(1,1),AutoButtonColor=false},DiscordPill)
- local Min=C(N("TextButton",{Text="-",Position=UDim2.new(1,-62,.5,-12),Size=UDim2.fromOffset(25,25),
-  BackgroundColor3=T.Surface2,BackgroundTransparency=.22,TextColor3=T.White,Font=T.Font,TextSize=16,BorderSizePixel=0,ZIndex=52},Header),5)
- local Close=C(N("TextButton",{Text="X",Position=UDim2.new(1,-31,.5,-12),Size=UDim2.fromOffset(25,25),
-  BackgroundColor3=T.Surface2,BackgroundTransparency=.22,TextColor3=T.White,Font=T.Font,TextSize=14,BorderSizePixel=0,ZIndex=52},Header),5)
- N("Frame",{Position=UDim2.new(0,8,0,HEADER),Size=UDim2.new(1,-16,0,1),BackgroundColor3=T.Red,BackgroundTransparency=.42,BorderSizePixel=0},Main)
-
- local Body=N("Frame",{Position=UDim2.new(0,GAP,0,HEADER+GAP),Size=UDim2.new(1,-GAP*2,1,-HEADER-GAP*2),BackgroundTransparency=1},Main)
- local Side=panel(Body,UDim2.new(0,0,0,0),UDim2.new(0,SIDE,1,0))
- local Nav=N("Frame",{Position=UDim2.fromOffset(6,42),Size=UDim2.new(1,-12,1,-49),BackgroundTransparency=1},Side)
- N("UIListLayout",{Padding=UDim.new(0,2),SortOrder=Enum.SortOrder.LayoutOrder},Nav)
-
- local Pages,NavData,Tabs,Order={},{},{},{}
- responsiveTabs=Tabs
- local active=nil
- local window={ScreenGui=SG,Holder=Holder,Main=Main,Header=Header,Body=Body,Side=Side,Stars=stars,
-  Pages=Pages,Tabs=Tabs,Closed=false,NotificationsEnabled=true,TooltipsEnabled=false}
- Library._LastWindow=window
-
- local function page(name)
-  local p=N("Frame",{Name=name,Position=UDim2.new(0,SIDE+GAP,0,0),Size=UDim2.new(1,-SIDE-GAP,1,0),
-   BackgroundTransparency=1,Visible=false},Body)
-  Pages[name]=p;return p
- end
- local function open(name)
-  active=name
-  for n,p in pairs(Pages) do p.Visible=n==name end
-  for n,d in pairs(NavData) do
-   local on=n==name;d.bar.Visible=on
-   tw(d.b,{BackgroundTransparency=on and .28 or 1})
-   tw(d.t,{TextColor3=on and T.Text or T.White})
-   tw(d.icon,{BackgroundColor3=on and T.Red or T.Surface2})
-  end
- end
- function window:SelectTab(name) open(name) end
-
- local ReferenceNavOrder={
-  User=10,
-  Automation=20,
-  Garden=30,
-  Shop=40,
-  Mail=50,
-  ["Auto Buy Pet"]=60,
-  Inventory=70,
-  Config=80,
-  Misc=90,
- }
-
- local function nav(name,iconImage,requestedOrder)
-  local stableOrder=
-   tonumber(requestedOrder)
-   or ReferenceNavOrder[name]
-   or ((#Order+1)*10)
-
-  local safeName=tostring(name):gsub("[^%w_]","_")
-
-  local b=C(N("TextButton",{
-   Name="Nav_"..safeName,
-   Size=UDim2.new(1,0,0,35),
-   BackgroundColor3=T.Surface2,
-   BackgroundTransparency=1,
-   BorderSizePixel=0,
-   Text="",
-   AutoButtonColor=false,
-   LayoutOrder=stableOrder
-  },Nav),5)
-  local bar=C(N("Frame",{Position=UDim2.new(0,0,.5,-12),Size=UDim2.fromOffset(3,24),BackgroundColor3=T.Red,BorderSizePixel=0,Visible=false},b),2)
-  local ib=C(N("Frame",{Position=UDim2.new(0,6,.5,-13),Size=UDim2.fromOffset(27,27),BackgroundColor3=T.Surface2,BorderSizePixel=0},b),5)
-  S(ib,T.Stroke,.75)
-  N("ImageLabel",{Name="Icon",Image=iconImage or "",ImageColor3=Color3.fromRGB(255,255,255),ScaleType=Enum.ScaleType.Fit,
-   BackgroundTransparency=1,BorderSizePixel=0,Position=UDim2.fromOffset(5,5),Size=UDim2.fromOffset(17,17)},ib)
-  local tx=label(b,string.upper(name),UDim2.new(0,39,0,0),UDim2.new(1,-44,1,0),10,T.White,T.Font)
-  NavData[name]={b=b,bar=bar,icon=ib,t=tx}
-  own(b.Activated:Connect(function() open(name) end))
- end
-
- function window:AddTab(c)
-  if type(c)=="string" then c={Name=c} else c=c or {} end
-  local name=tostring(c.Name or ("Tab "..tostring(#Order+1)))
-  if Tabs[name] then return Tabs[name] end
-  local P=page(name)
-  nav(name,c.Icon,c.Order)
-
-  Order[#Order+1]=name
-  table.sort(Order,function(a,b)
-   local da=NavData[a]
-   local db=NavData[b]
-   local ao=da and da.b and da.b.LayoutOrder or math.huge
-   local bo=db and db.b and db.b.LayoutOrder or math.huge
-
-   if ao==bo then
-    return tostring(a)<tostring(b)
-   end
-
-   return ao<bo
-  end)
-
-  local tab={Name=name,Page=P,Title=c.Title or string.upper(name),Status=c.Status or "",Built=false,Sections={},Y={Left=0,Right=0},SearchItems={}}
-  Tabs[name]=tab
-
-  function tab:SetStatus(text,good)
-   self.Status=tostring(text or "")
-   if self.StatusLabel then self.StatusLabel.Text=self.Status
-    self.StatusLabel.TextColor3=good==true and T.Success or good==false and T.Red or T.Muted end
-  end
-
-  function tab:_build()
-   if self.Built then return end;self.Built=true
-   self.TitleLabel=label(P,self.Title,UDim2.new(0,8,0,1),UDim2.new(.5,0,0,20),11,T.Text,T.Font)
-   self.StatusLabel=label(P,self.Status,UDim2.new(.5,0,0,1),UDim2.new(.5,-8,0,20),10,T.Success,T.Font,Enum.TextXAlignment.Right)
-   self.Scroll=N("ScrollingFrame",{Name=name.."Scroll",Position=UDim2.new(0,0,0,24),Size=UDim2.new(1,-8,1,-24),
-    BackgroundTransparency=1,BorderSizePixel=0,CanvasSize=UDim2.new(),
-    AutomaticCanvasSize=Enum.AutomaticSize.Y,
-    ScrollingDirection=Enum.ScrollingDirection.Y,
-    ScrollingEnabled=true,
-    Active=true,
-    ScrollBarThickness=mobile and 6 or 4,
-    ScrollBarImageColor3=T.Red,
-    VerticalScrollBarPosition=Enum.VerticalScrollBarPosition.Right,
-    ElasticBehavior=Enum.ElasticBehavior.WhenScrollable,
-    ClipsDescendants=true},P)
-
-   self.CanvasEnd=N("Frame",{
-    Name="MobileCanvasEnd",
-    BackgroundTransparency=1,
-    BorderSizePixel=0,
-    Position=UDim2.fromOffset(0,0),
-    Size=UDim2.fromOffset(1,1),
-   },self.Scroll)
-  end
-  function tab:_reflow()
-   if not self.Built then return end
-
-   local y={Left=0,Right=0}
-   local contentBottom=0
-
-   if mobileSingleColumn then
-    -- Portrait phones: stack sections vertically for readable touch controls.
-    local py=0
-
-    for _,s in ipairs(self.Sections) do
-     s.Card.Position=UDim2.new(0,1,0,py)
-     s.Card.Size=UDim2.new(1,-13,0,s.Height)
-     py=py+s.Height+10
+local function ensureConfigFolder()
+    if not CONFIG_SUPPORTED then
+        return false
     end
 
-    y.Left=py
-    y.Right=0
-    contentBottom=py
-   else
-    -- Desktop and landscape mobile preserve the existing two-column layout.
-    for _,s in ipairs(self.Sections) do
-     local right=s.Column=="Right"
-     local py=y[s.Column]
-
-     if right then
-      s.Card.Position=UDim2.new(.5,-2,0,py)
-      s.Card.Size=UDim2.new(.5,-10,0,s.Height)
-     else
-      s.Card.Position=UDim2.new(0,1,0,py)
-      s.Card.Size=UDim2.new(.5,-11,0,s.Height)
-     end
-
-     y[s.Column]=py+s.Height+10
-    end
-
-    contentBottom=math.max(y.Left,y.Right)
-   end
-
-   self.Y=y
-
-   -- Extra touch-scroll room ensures the last control is never clipped.
-   local canvasBottom=contentBottom+42
-
-   self.Scroll.CanvasSize=
-    UDim2.new(0,0,0,canvasBottom)
-
-   if self.CanvasEnd then
-    self.CanvasEnd.Position=
-     UDim2.fromOffset(0,canvasBottom-1)
-   end
-  end
-
-  function tab:AddSection(sc)
-   self:_build();if type(sc)=="string" then sc={Title=sc} else sc=sc or {} end
-   local col=string.lower(tostring(sc.Column or (self.Y.Left<=self.Y.Right and "Left" or "Right")))=="right" and "Right" or "Left"
-   local card=panel(self.Scroll,UDim2.new(),UDim2.new(.5,-5,0,60),string.upper(tostring(sc.Title or "SECTION")))
-   N("Frame",{BackgroundColor3=T.Line,BackgroundTransparency=.55,BorderSizePixel=0,Position=UDim2.new(0,10,0,21),Size=UDim2.new(1,-20,0,1)},card)
-   if sc.Badge then
-    local bc=sc.BadgeColor or T.RedDark
-    local b=C(N("Frame",{BackgroundColor3=bc,BorderSizePixel=0,Position=UDim2.new(1,-88,0,6),Size=UDim2.fromOffset(78,15)},card),999)
-    S(b,bc,.45,1);label(b,tostring(sc.Badge),UDim2.new(),UDim2.fromScale(1,1),8,T.White,T.Font,Enum.TextXAlignment.Center)
-   end
-   local sec={Card=card,Column=col,Height=60,Y=28,Tab=self};self.Sections[#self.Sections+1]=sec
-   local function grow() sec.Height=math.max(60,sec.Y+8);tab:_reflow() end
-   local function search(t,target) tab.SearchItems[#tab.SearchItems+1]={Title=t,Target=target} end
-
-   function sec:AddToggle(x)
-    x=x or {};local y=self.Y;local title=tostring(x.Title or "Toggle")
-    label(card,title,UDim2.new(0,10,0,y),UDim2.new(1,-82,0,14),11,T.White,T.Font)
-    if x.Content and tostring(x.Content)~="" then label(card,x.Content,UDim2.new(0,10,0,y+14),UDim2.new(1,-82,0,13),9,T.Muted,T.Body) end
-    local state=x.Default==true
-    local b=C(N("TextButton",{Text="",BackgroundColor3=state and T.Success or T.RedDark,BorderSizePixel=0,AutoButtonColor=false,
-     Position=UDim2.new(1,-58,0,y+2),Size=UDim2.fromOffset(48,23)},card),12)
-    local k=C(N("Frame",{BackgroundColor3=T.White,BorderSizePixel=0,AnchorPoint=Vector2.new(0,.5),
-     Position=state and UDim2.new(1,-20,.5,0) or UDim2.new(0,3,.5,0),Size=UDim2.fromOffset(17,17)},b),10)
-    local api={}
-    function api:Set(v,fire) state=v==true;b.BackgroundColor3=state and T.Success or T.RedDark
-     tw(k,{Position=state and UDim2.new(1,-20,.5,0) or UDim2.new(0,3,.5,0)},.15)
-     if fire~=false and type(x.Callback)=="function" then x.Callback(state) end end
-    function api:Get() return state end
-    own(b.Activated:Connect(function() api:Set(not state) end))
-    self.Y=y+((x.Content and tostring(x.Content)~="") and 38 or 34);grow();search(title,b);return api
-   end
-
-   function sec:AddButton(x)
-    x=x or {};local y=self.Y;local title=tostring(x.Title or "Action")
-    label(card,title,UDim2.new(0,10,0,y+5),UDim2.new(1,-125,0,18),11,T.White,T.Font)
-    local b=C(N("TextButton",{Text=x.ButtonText or "RUN",Position=UDim2.new(1,-110,0,y+1),Size=UDim2.fromOffset(100,27),
-     BackgroundColor3=x.Color or T.RedDark,BorderSizePixel=0,AutoButtonColor=false,TextColor3=T.White,Font=T.Font,TextSize=10},card),5)
-    S(b,T.Red,.45,1)
-    own(b.MouseEnter:Connect(function() tw(b,{BackgroundColor3=T.Red},.1) end))
-    own(b.MouseLeave:Connect(function() tw(b,{BackgroundColor3=x.Color or T.RedDark},.1) end))
-    own(b.Activated:Connect(function() if type(x.Callback)=="function" then x.Callback() end end))
-    local api={Button=b};function api:SetText(v)b.Text=tostring(v or "")end
-    self.Y=y+36;grow();search(title,b);return api
-   end
-
-   function sec:AddInput(x)
-    x=x or {};local y=self.Y;local title=tostring(x.Title or "Input")
-    label(card,title,UDim2.new(0,10,0,y),UDim2.new(1,-20,0,14),10,T.Muted,T.Font)
-    local masked=x.Masked==true or x.Secret==true
-    local b=C(N("TextBox",{Text=tostring(x.Default or ""),PlaceholderText=x.Placeholder or "Input value",ClearTextOnFocus=false,
-     Font=T.Font,TextSize=11,TextColor3=T.White,PlaceholderColor3=T.Muted,TextXAlignment=Enum.TextXAlignment.Left,
-     BackgroundColor3=T.Input,BorderSizePixel=0,Position=UDim2.new(0,10,0,y+17),Size=UDim2.new(1,-20,0,27)},card),5)
-    N("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},b);S(b,T.Stroke,.82,1)
-    local mask
-    if masked then
-     b.TextTransparency=1
-     mask=label(b,"",UDim2.new(0,8,0,0),UDim2.new(1,-16,1,0),11,T.White,T.Font)
-     mask.ZIndex=b.ZIndex+1
-     mask.Active=false
-     local function refreshMask()
-      local value=tostring(b.Text or "")
-      if value=="" then
-       mask.Text=""
-      else
-       local shown=x.MaskText or "••••••••••••••••••••"
-       mask.Text=tostring(shown)
-      end
-     end
-     own(b:GetPropertyChangedSignal("Text"):Connect(refreshMask))
-     own(b.Focused:Connect(refreshMask))
-     own(b.FocusLost:Connect(refreshMask))
-     refreshMask()
-    end
-    own(b.FocusLost:Connect(function(e) if type(x.Callback)=="function" then x.Callback(b.Text,b,e) end end))
-    local api={Box=b,Mask=mask};function api:Set(v,fire)b.Text=tostring(v or "");if fire==true and type(x.Callback)=="function" then x.Callback(b.Text,b,false) end end
-    function api:Get()return b.Text end
-    self.Y=y+52;grow();search(title,b);return api
-   end
-
-   function sec:AddDropdown(x)
-    x=x or {}
-    local y=self.Y
-    local title=tostring(x.Title or "Dropdown")
-
-    label(
-     card,
-     title,
-     UDim2.new(0,10,0,y),
-     UDim2.new(1,-20,0,14),
-     10,
-     T.Muted,
-     T.Font
-    )
-
-    local selector=C(N("TextButton",{
-     Text="",
-     Font=T.Body,
-     TextSize=11,
-     TextColor3=T.White,
-     TextXAlignment=Enum.TextXAlignment.Left,
-     TextTruncate=Enum.TextTruncate.AtEnd,
-     BackgroundColor3=T.Input,
-     BorderSizePixel=0,
-     AutoButtonColor=false,
-     Position=UDim2.new(0,10,0,y+17),
-     Size=UDim2.new(1,-20,0,27),
-     ClipsDescendants=true,
-     ZIndex=5
-    },card),5)
-
-    S(selector,T.Stroke,.82,1)
-
-    local multi=x.Multi==true
-    local singleSelect=not multi
-    local options=norm(x.Options or {})
-    local selected=norm(x.Default or {})
-
-    if singleSelect and #selected>1 then
-     selected={selected[1]}
-    end
-
-    local empty=x.EmptyText or x.Placeholder or "Select..."
-    local searchPlaceholder=x.SearchPlaceholder or "Search..."
-
-    local selectorText=N("TextLabel",{
-     Name="CompactSelectorText",
-     Text=fmt(selected,empty),
-     Font=T.Body,
-     TextSize=12,
-     TextColor3=T.White,
-     TextXAlignment=Enum.TextXAlignment.Left,
-     TextTruncate=Enum.TextTruncate.AtEnd,
-     BackgroundTransparency=1,
-     Position=UDim2.new(0,8,0,0),
-     Size=UDim2.new(1,-28,1,0),
-     ZIndex=6
-    },selector)
-
-    local selectorChevron=N("Frame",{
-     Name="CompactSelectorChevron",
-     BackgroundTransparency=1,
-     BorderSizePixel=0,
-     Position=UDim2.new(1,-20,.5,-5),
-     Size=UDim2.fromOffset(14,10),
-     Rotation=0,
-     ZIndex=6
-    },selector)
-
-    N("Frame",{
-     Name="ChevronLeft",
-     BackgroundColor3=T.Muted,
-     BorderSizePixel=0,
-     AnchorPoint=Vector2.new(.5,.5),
-     Position=UDim2.new(.5,-2,.5,0),
-     Size=UDim2.fromOffset(7,2),
-     Rotation=45,
-     ZIndex=7
-    },selectorChevron)
-
-    N("Frame",{
-     Name="ChevronRight",
-     BackgroundColor3=T.Muted,
-     BorderSizePixel=0,
-     AnchorPoint=Vector2.new(.5,.5),
-     Position=UDim2.new(.5,2,.5,0),
-     Size=UDim2.fromOffset(7,2),
-     Rotation=-45,
-     ZIndex=7
-    },selectorChevron)
-
-    local function setChevron(open,instant)
-     local rotation=open and 180 or 0
-
-     if instant then
-      selectorChevron.Rotation=rotation
-     else
-      tw(selectorChevron,{Rotation=rotation},.14)
-     end
-    end
-
-    -- Match the reference Plant/Automation picker: popup belongs to the PAGE,
-    -- not the scrolling card, so it can float over nearby cards without being
-    -- clipped by them.
-    local pop=C(N("Frame",{
-     Name="CompactAutomationDropdown",
-     Visible=false,
-     BackgroundColor3=T.Surface2,
-     BorderSizePixel=0,
-     ClipsDescendants=true,
-     Position=UDim2.fromOffset(0,0),
-     Size=UDim2.fromOffset(230,240),
-     ZIndex=800
-    },P),6)
-
-    S(pop,T.Red,0,1.5)
-
-    local sb=C(N("TextBox",{
-     Name="CompactAutomationSearch",
-     Text="",
-     PlaceholderText=searchPlaceholder,
-     Font=T.Body,
-     TextSize=12,
-     TextColor3=T.White,
-     PlaceholderColor3=T.Muted,
-     TextXAlignment=Enum.TextXAlignment.Left,
-     BackgroundColor3=T.Surface3,
-     BorderSizePixel=0,
-     ClearTextOnFocus=false,
-     Position=UDim2.new(0,4,0,4),
-     Size=UDim2.new(1,-8,0,26),
-     ZIndex=801
-    },pop),5)
-
-    N("UIPadding",{
-     PaddingLeft=UDim.new(0,8)
-    },sb)
-
-    local acts=N("Frame",{
-     Name="CompactAutomationActions",
-     BackgroundTransparency=1,
-     BorderSizePixel=0,
-     Position=UDim2.new(0,4,0,34),
-     Size=UDim2.new(1,-8,0,26),
-     Visible=multi,
-     ZIndex=801
-    },pop)
-
-    local all=btn(
-     acts,
-     "SELECT ALL",
-     UDim2.new(),
-     UDim2.new(.5,-2,1,0),
-     T.RedDark
-    )
-    all.TextSize=11
-    all.ZIndex=802
-
-    local clear=btn(
-     acts,
-     "CLEAR ALL",
-     UDim2.new(.5,2,0,0),
-     UDim2.new(.5,-2,1,0),
-     T.Surface3
-    )
-    clear.TextSize=11
-    clear.ZIndex=802
-
-    local scroll=N("ScrollingFrame",{
-     Name="CompactAutomationScroll",
-     BackgroundTransparency=1,
-     BorderSizePixel=0,
-     Position=UDim2.new(
-      0,
-      4,
-      0,
-      singleSelect and 34 or 64
-     ),
-     Size=UDim2.new(
-      1,
-      -8,
-      1,
-      singleSelect and -38 or -68
-     ),
-     CanvasSize=UDim2.new(),
-     ScrollBarThickness=3,
-     ScrollBarImageColor3=T.Red,
-     ScrollingDirection=Enum.ScrollingDirection.Y,
-     ZIndex=801
-    },pop)
-
-    local lay=N("UIListLayout",{
-     Padding=UDim.new(0,2),
-     SortOrder=Enum.SortOrder.LayoutOrder
-    },scroll)
-
-    local api={}
-    local rows={}
-    local maxVisibleRows=6
-    local rowHeight=34
-    local headerHeight=singleSelect and 34 or 64
-    local desiredHeight=240
-    local currentWidth=230
-    local openState=false
-    local updatePosition
-
-    local function fire()
-     if type(x.Callback)=="function" then
-      x.Callback(
-       multi and norm(selected) or selected[1]
-      )
-     end
-    end
-
-    local function upd()
-     selectorText.Text=fmt(selected,empty)
-    end
-
-    local function pointInside(gui,point)
-     if not gui or not gui.Visible then
-      return false
-     end
-
-     local pos=gui.AbsolutePosition
-     local size=gui.AbsoluteSize
-
-     return point.X>=pos.X
-      and point.X<=pos.X+size.X
-      and point.Y>=pos.Y
-      and point.Y<=pos.Y+size.Y
-    end
-
-    local function selectorVisibleInScroll()
-     if not tab.Scroll
-      or not tab.Scroll.Parent
-      or not selector.Parent
-     then
-      return false
-     end
-
-     local selectorPos=selector.AbsolutePosition
-     local selectorSize=selector.AbsoluteSize
-     local scrollPos=tab.Scroll.AbsolutePosition
-     local scrollSize=tab.Scroll.AbsoluteSize
-
-     local selectorLeft=selectorPos.X
-     local selectorRight=selectorPos.X+selectorSize.X
-     local selectorTop=selectorPos.Y
-     local selectorBottom=selectorPos.Y+selectorSize.Y
-
-     local scrollLeft=scrollPos.X
-     local scrollRight=scrollPos.X+scrollSize.X
-     local scrollTop=scrollPos.Y
-     local scrollBottom=scrollPos.Y+scrollSize.Y
-
-     return selectorRight>scrollLeft
-      and selectorLeft<scrollRight
-      and selectorBottom>scrollTop
-      and selectorTop<scrollBottom
-    end
-
-    function api:Close()
-     pop.Visible=false
-     openState=false
-     setChevron(false,false)
-
-     if window._ActiveDropdown==pop then
-      window._ActiveDropdown=nil
-      window._ActiveDropdownClose=nil
-      window._ActiveDropdownChevron=nil
-     end
-    end
-
-    updatePosition=function()
-     if not pop.Visible
-      or not selector.Parent
-      or not P.Parent
-     then
-      return
-     end
-
-     -- If scrolling moved the selector completely outside the visible
-     -- ScrollingFrame, close instead of leaving an orphan popup on-screen.
-     if tab.Scroll and not selectorVisibleInScroll() then
-      api:Close()
-      return
-     end
-
-     local ok=pcall(function()
-      local scaleValue=math.max(
-       tonumber(Scale.Scale) or 1,
-       .01
-      )
-
-      local basePos=P.AbsolutePosition
-      local baseSize=P.AbsoluteSize
-      local buttonPos=selector.AbsolutePosition
-      local buttonSize=selector.AbsoluteSize
-
-      local pageWidth=baseSize.X/scaleValue
-      local pageHeight=baseSize.Y/scaleValue
-
-      local buttonX=
-       (buttonPos.X-basePos.X)/scaleValue
-
-      local buttonTop=
-       (buttonPos.Y-basePos.Y)/scaleValue
-
-      local buttonHeight=
-       buttonSize.Y/scaleValue
-
-      local buttonBottom=
-       buttonTop+buttonHeight
-
-      local margin=4
-
-      currentWidth=
-       buttonSize.X/scaleValue
-
-      -- Keep the picker horizontally aligned with the selector but clamp it
-      -- inside the visible page.
-      local px=math.clamp(
-       buttonX,
-       margin,
-       math.max(
-        margin,
-        pageWidth-currentWidth-margin
-       )
-      )
-
-      local availableBelow=
-       math.max(
-        0,
-        pageHeight-buttonBottom-margin
-       )
-
-      local availableAbove=
-       math.max(
-        0,
-        buttonTop-margin
-       )
-
-      -- Same logic as the reference: prefer below, automatically flip above
-      -- when there is not enough room underneath.
-      local openAbove=
-       desiredHeight>availableBelow
-       and availableAbove>availableBelow
-
-      local availableHeight=
-       openAbove
-       and availableAbove
-       or availableBelow
-
-      local actualHeight=
-       math.min(
-        desiredHeight,
-        availableHeight
-       )
-
-      -- Tiny/scaled windows: use whichever side genuinely has more room.
-      if actualHeight<100 then
-       if availableAbove>availableBelow then
-        openAbove=true
-        availableHeight=availableAbove
-       else
-        openAbove=false
-        availableHeight=availableBelow
-       end
-
-       actualHeight=
-        math.min(
-         desiredHeight,
-         availableHeight
-        )
-      end
-
-      actualHeight=
-       math.max(
-        0,
-        actualHeight
-       )
-
-      local py
-
-      if openAbove then
-       py=
-        buttonTop
-        -actualHeight
-        -margin
-      else
-       py=
-        buttonBottom
-        +margin
-      end
-
-      py=math.clamp(
-       py,
-       margin,
-       math.max(
-        margin,
-        pageHeight-actualHeight-margin
-       )
-      )
-
-      pop.Position=
-       UDim2.fromOffset(
-        px,
-        py
-       )
-
-      pop.Size=
-       UDim2.fromOffset(
-        currentWidth,
-        actualHeight
-       )
-     end)
-
-     if not ok then
-      pop.Position=
-       UDim2.fromOffset(
-        10,
-        72
-       )
-
-      pop.Size=
-       UDim2.fromOffset(
-        currentWidth,
-        desiredHeight
-       )
-     end
-    end
-
-    local function resizeDropdown(matchCount)
-     local visibleRows=
-      math.clamp(
-       matchCount,
-       1,
-       maxVisibleRows
-      )
-
-     desiredHeight=
-      headerHeight
-      +(visibleRows*(rowHeight+2))
-      +4
-
-     if pop.Visible then
-      updatePosition()
-     else
-      pop.Size=
-       UDim2.fromOffset(
-        currentWidth,
-        desiredHeight
-       )
-     end
-    end
-
-    local function clearRows()
-     for _,c in ipairs(rows) do
-      if c.Parent then
-       c:Destroy()
-      end
-     end
-
-     table.clear(rows)
-    end
-
-    local function resetRowColors()
-     for _,r in ipairs(rows) do
-      if r and r.Parent then
-       local optionName=r:GetAttribute("ScoopHubOptionName")
-
-       r.BackgroundColor3=
-        optionName
-        and has(selected,optionName)
-        and Color3.fromRGB(55,22,30)
-        or T.Surface2
-      end
-     end
-    end
-
-    local function rebuild()
-     clearRows()
-
-     local q=
-      string.lower(
-       sb.Text or ""
-      )
-
-     local n=0
-
-     for _,o in ipairs(options) do
-      if q==""
-       or string.find(
-        string.lower(o),
-        q,
-        1,
-        true
-       )
-      then
-       n+=1
-
-       local on=has(selected,o)
-
-       local r=C(N("TextButton",{
-        Text="",
-        BackgroundColor3=
-         on
-         and Color3.fromRGB(55,22,30)
-         or T.Surface2,
-        BorderSizePixel=0,
-        AutoButtonColor=false,
-        Size=UDim2.new(1,0,0,rowHeight),
-        LayoutOrder=n,
-        ZIndex=802
-       },scroll),4)
-
-       rows[#rows+1]=r
-       r:SetAttribute("ScoopHubOptionName",o)
-
-       label(
-        r,
-        on and "✓" or "",
-        UDim2.new(0,8,0,0),
-        UDim2.fromOffset(18,rowHeight),
-        14,
-        T.Success,
-        T.Font,
-        Enum.TextXAlignment.Left
-       ).ZIndex=803
-
-       label(
-        r,
-        o,
-        UDim2.new(0,28,0,0),
-        UDim2.new(1,-36,1,0),
-        12,
-        T.White,
-        T.Body
-       ).ZIndex=803
-
-       own(r.MouseEnter:Connect(function()
-        if not has(selected,o) then
-         r.BackgroundColor3=T.RedDark
-        end
-       end))
-
-       own(r.MouseLeave:Connect(function()
-        r.BackgroundColor3=
-         has(selected,o)
-         and Color3.fromRGB(55,22,30)
-         or T.Surface2
-       end))
-
-       own(r.Activated:Connect(function()
-        if multi then
-         if has(selected,o) then
-          local z={}
-
-          for _,v in ipairs(selected) do
-           if v~=o then
-            z[#z+1]=v
-           end
-          end
-
-          selected=z
-         else
-          selected[#selected+1]=o
-         end
-
-         upd()
-         rebuild()
-         fire()
-        else
-         selected={o}
-         upd()
-         fire()
-         api:Close()
-        end
-       end))
-      end
-     end
-
-     scroll.CanvasSize=
-      UDim2.new(
-       0,
-       0,
-       0,
-       lay.AbsoluteContentSize.Y+4
-      )
-
-     resizeDropdown(
-      math.max(n,1)
-     )
-    end
-
-    function api:Open()
-     -- Never allow two floating pickers to overlap. This is important when
-     -- selectors in opposite columns are both visible.
-     if window._ActiveDropdown
-      and window._ActiveDropdown~=pop
-      and type(window._ActiveDropdownClose)=="function"
-     then
-      window._ActiveDropdownClose()
-     end
-
-     window._ActiveDropdown=pop
-     window._ActiveDropdownClose=function()
-      api:Close()
-     end
-     window._ActiveDropdownChevron=selectorChevron
-
-     sb.Text=""
-     rebuild()
-     resetRowColors()
-
-     pop.Visible=true
-     openState=true
-     setChevron(true,false)
-
-     -- Position after becoming visible so AbsoluteSize is valid.
-     task.defer(function()
-      if pop.Visible then
-       updatePosition()
-      end
-     end)
-    end
-
-    function api:Set(v,firecb)
-     selected=norm(v)
-
-     if singleSelect and #selected>1 then
-      selected={selected[1]}
-     end
-
-     upd()
-
-     if pop.Visible then
-      rebuild()
-     end
-
-     if firecb==true then
-      fire()
-     end
-    end
-
-    function api:Get()
-     return multi
-      and norm(selected)
-      or selected[1]
-    end
-
-    function api:SetOptions(v,preserve)
-     options=norm(v)
-
-     if preserve~=true then
-      selected={}
-     else
-      local z={}
-
-      for _,i in ipairs(selected) do
-       if has(options,i) then
-        z[#z+1]=i
-       end
-      end
-
-      selected=z
-     end
-
-     upd()
-
-     if pop.Visible then
-      rebuild()
-     end
-    end
-
-    function api:Refresh(v,s)
-     if v~=nil then
-      options=norm(v)
-     end
-
-     if s~=nil then
-      selected=norm(s)
-     end
-
-     if singleSelect and #selected>1 then
-      selected={selected[1]}
-     end
-
-     upd()
-
-     if pop.Visible then
-      rebuild()
-     end
-    end
-
-    own(selector.Activated:Connect(function()
-     if openState then
-      api:Close()
-     else
-      api:Open()
-     end
-    end))
-
-    own(sb:GetPropertyChangedSignal("Text"):Connect(function()
-     rebuild()
-    end))
-
-    own(all.Activated:Connect(function()
-     if multi then
-      selected=norm(options)
-      upd()
-      rebuild()
-      fire()
-     end
-    end))
-
-    own(clear.Activated:Connect(function()
-     if multi then
-      selected={}
-      upd()
-      rebuild()
-      fire()
-     end
-    end))
-
-    -- Requested behavior: keep the popup anchored while the tab scrolls.
-    -- The reference closes here; this library instead reuses the reference's
-    -- positioning math so the popup follows the selector smoothly.
-    if tab.Scroll then
-     own(
-      tab.Scroll:
-       GetPropertyChangedSignal(
-        "CanvasPosition"
-       ):
-       Connect(function()
-        if pop.Visible then
-         resetRowColors()
-         updatePosition()
-
-         task.defer(function()
-          if pop.Visible then
-           resetRowColors()
-          end
-         end)
-        end
-       end)
-     )
-    end
-
-    -- If responsive scaling changes while open, recalc the anchor.
-    own(
-     Scale:
-      GetPropertyChangedSignal(
-       "Scale"
-      ):
-      Connect(function()
-       if pop.Visible then
-        resetRowColors()
-        updatePosition()
-
-        task.defer(function()
-         if pop.Visible then
-          resetRowColors()
-         end
+    if type(isfolder) == "function"
+        and type(makefolder) == "function"
+    then
+        local ok, exists = pcall(function()
+            return isfolder(CONFIG_FOLDER)
         end)
-       end
-      end)
-    )
 
-    -- Tab change = close.
-    own(
-     P:
-      GetPropertyChangedSignal(
-       "Visible"
-      ):
-      Connect(function()
-       if not P.Visible
-        and pop.Visible
-       then
-        api:Close()
-       end
-      end)
-    )
-
-    -- Click/tap outside = close.
-    own(UIS.InputBegan:Connect(function(input)
-     if not pop.Visible then
-      return
-     end
-
-     if input.UserInputType
-         ~=Enum.UserInputType.MouseButton1
-      and input.UserInputType
-         ~=Enum.UserInputType.Touch
-     then
-      return
-     end
-
-     local point=input.Position
-
-     if not pointInside(pop,point)
-      and not pointInside(selector,point)
-     then
-      api:Close()
-     end
-    end))
-
-    upd()
-
-    self.Y=y+52
-    grow()
-    search(title,selector)
-
-    return api
-   end
-
-   tab:_reflow();return sec
-  end
-
-  function tab:AddUserDashboard(u)
-   u=u or {};P.ClipsDescendants=false
-
-   local function registerUserSearch(title,target)
-    self.SearchItems[#self.SearchItems+1]={
-     Title=tostring(title or ""),
-     Target=target,
-    }
-   end
-   if self.Built then
-    if self.TitleLabel then self.TitleLabel:Destroy()end;if self.StatusLabel then self.StatusLabel:Destroy()end;if self.Scroll then self.Scroll:Destroy()end
-    self.Built=false
-   end
-   local prefs=u.Preferences or {};if prefs.Notifications==nil then prefs.Notifications=false end;if prefs.Tooltips==nil then prefs.Tooltips=false end
-   local function card(pos,size,title)
-    local f=C(N("Frame",{Position=pos,Size=size,BackgroundColor3=Color3.fromRGB(12,12,14),BackgroundTransparency=.08,BorderSizePixel=0,ClipsDescendants=true},P),7)
-    S(f,T.Red,.38,1);label(f,title,UDim2.new(0,12,0,8),UDim2.new(1,-24,0,18),12,T.Red,T.Font);return f
-   end
-   local function hover(par,text,pos,size)
-    local b=C(N("TextButton",{Text=text,Position=pos,Size=size,BackgroundColor3=Color3.fromRGB(24,22,25),BackgroundTransparency=.08,
-     BorderSizePixel=0,AutoButtonColor=false,TextColor3=T.White,Font=T.Font,TextSize=12},par),5);S(b,USER_SOFT,.58,1)
-    own(b.MouseEnter:Connect(function()tw(b,{BackgroundColor3=Color3.fromRGB(36,31,35)},.1)end))
-    own(b.MouseLeave:Connect(function()tw(b,{BackgroundColor3=Color3.fromRGB(24,22,25)},.1)end));return b
-   end
-   local function row(par,t,v,y)
-    label(par,t,UDim2.new(0,12,0,y),UDim2.new(.32,-4,0,17),12,T.Muted,T.Body)
-    local x=label(par,v,UDim2.new(.32,4,0,y),UDim2.new(.68,-16,0,17),12,T.White,T.Font,Enum.TextXAlignment.Right)
-    x.TextTruncate=Enum.TextTruncate.AtEnd
-    if t=="Job ID" then
-     x.TextSize=11
+        if ok and not exists then
+            pcall(function()
+                makefolder(CONFIG_FOLDER)
+            end)
+        end
+    elseif type(makefolder) == "function" then
+        pcall(function()
+            makefolder(CONFIG_FOLDER)
+        end)
     end
-    N("Frame",{Position=UDim2.new(0,12,0,y+22),Size=UDim2.new(1,-24,0,1),BackgroundColor3=Color3.fromRGB(68,55,59),BackgroundTransparency=.65,BorderSizePixel=0},par);return x
-   end
-   local function tog(par,t,d,y,init,cb)
-    label(par,t,UDim2.new(0,12,0,y),UDim2.new(1,-75,0,15),12,T.White,T.Font)
-    if d and d~="" then
-     label(par,d,UDim2.new(0,12,0,y+14),UDim2.new(1,-75,0,14),10,T.Muted,T.Body)
+
+    return true
+end
+
+local function copyStringList(source)
+    local result = {}
+
+    if type(source) ~= "table" then
+        return result
     end
-    local st=init==true;local b=C(N("TextButton",{Text="",Position=UDim2.new(1,-58,0,y+3),Size=UDim2.fromOffset(43,21),
-     BackgroundColor3=st and T.RedDark or Color3.fromRGB(47,43,47),BorderSizePixel=0,AutoButtonColor=false},par),20)
-    S(b,st and T.Red or Color3.fromRGB(93,77,82),.48,1)
-    local k=C(N("Frame",{AnchorPoint=Vector2.new(0,.5),Position=st and UDim2.new(1,-19,.5,0) or UDim2.new(0,3,.5,0),
-     Size=UDim2.fromOffset(16,16),BackgroundColor3=T.White,BorderSizePixel=0},b),20)
-    local api={};function api:Set(v,fire)st=v==true;tw(b,{BackgroundColor3=st and T.RedDark or Color3.fromRGB(47,43,47)},.12);tw(k,{Position=st and UDim2.new(1,-19,.5,0) or UDim2.new(0,3,.5,0)},.12)
-     local q=b:FindFirstChildOfClass("UIStroke");if q then q.Color=st and T.Red or Color3.fromRGB(93,77,82)end;if fire==true and type(cb)=="function"then cb(st)end end
-    function api:Get()return st end;own(b.Activated:Connect(function()api:Set(not st,true)end));return api
-   end
 
-   N("ImageLabel",{Image=u.Icon or "rbxassetid://17132521951",ImageColor3=T.Red,BackgroundTransparency=1,Position=UDim2.new(0,3,0,4),Size=UDim2.fromOffset(31,31)},P)
-   label(P,u.Title or "USER",UDim2.new(0,41,0,4),UDim2.new(1,-45,0,20),16,T.White,T.Font)
-   label(P,u.Description or "Manage your account, preferences and session.",UDim2.new(0,41,0,24),UDim2.new(1,-45,0,16),12,T.Muted,T.Body)
+    for index = 1, #source do
+        local value = tostring(source[index] or "")
 
-   local pc=card(UDim2.new(0,0,0,49),UDim2.new(.5,-5,0,159),"PLAYER INFO")
-   registerUserSearch("Player Info",pc)
-   local av=C(N("Frame",{Position=UDim2.new(0,12,0,31),Size=UDim2.fromOffset(92,72),BackgroundColor3=Color3.fromRGB(26,25,28),BorderSizePixel=0,ClipsDescendants=true},pc),6);S(av,Color3.fromRGB(85,66,72),.62,1)
-   N("ImageLabel",{Image="rbxthumb://type=AvatarBust&id="..tostring(LP.UserId).."&w=180&h=180",BackgroundTransparency=1,Size=UDim2.fromScale(1,1),ScaleType=Enum.ScaleType.Fit},av)
-   local function pv(t,v,y)
-    label(pc,t,UDim2.new(0,114,0,y),UDim2.new(1,-124,0,13),11,T.Muted,T.Body)
-    return label(pc,tostring(v),UDim2.new(0,114,0,y+13),UDim2.new(1,-124,0,15),12,T.White,T.Font)
-   end
-
-   local usernameValue=pv("Username",LP.Name,30)
-   local userIdValue=pv("User ID",LP.UserId,60)
-   local displayNameValue=pv("Display Name",LP.DisplayName,90)
-
-   local copy=hover(pc,"COPY USER ID",UDim2.new(0,12,1,-30),UDim2.new(.5,-18,0,22))
-   local privacy=hover(pc,"HIDE INFO",UDim2.new(.5,6,1,-30),UDim2.new(.5,-18,0,22))
-
-   own(copy.Activated:Connect(function()
-    local ok=false
-    if type(setclipboard)=="function"then
-     ok=pcall(setclipboard,tostring(LP.UserId))
-    elseif type(toclipboard)=="function"then
-     ok=pcall(toclipboard,tostring(LP.UserId))
+        if value ~= "" then
+            result[#result + 1] = value
+        end
     end
-    copy.Text=ok and "COPIED" or tostring(LP.UserId)
-    task.delay(1.15,function()
-     if copy.Parent then copy.Text="COPY USER ID" end
+
+    return result
+end
+
+local function listToSet(source)
+    local result = {}
+
+    for index = 1, #source do
+        result[source[index]] = true
+    end
+
+    return result
+end
+
+local function loadAutoConfig()
+    if not CONFIG_SUPPORTED then
+        return {}
+    end
+
+    local exists = true
+
+    if type(isfile) == "function" then
+        local ok, value = pcall(function()
+            return isfile(CONFIG_FILE)
+        end)
+
+        exists = ok and value == true
+    end
+
+    if not exists then
+        return {}
+    end
+
+    local okRead, encoded = pcall(function()
+        return readfile(CONFIG_FILE)
     end)
-   end))
 
-   local userInfoHidden=false
-   local function maskUserValue(value)
-    value=tostring(value or "")
-    return string.rep("*",math.max(#value,3))
-   end
+    if not okRead
+        or type(encoded) ~= "string"
+        or encoded == ""
+    then
+        return {}
+    end
 
-   local function refreshUserPrivacy()
-    usernameValue.Text=userInfoHidden and maskUserValue(LP.Name) or tostring(LP.Name)
-    userIdValue.Text=userInfoHidden and maskUserValue(LP.UserId) or tostring(LP.UserId)
-    displayNameValue.Text=userInfoHidden and maskUserValue(LP.DisplayName) or tostring(LP.DisplayName)
-    privacy.Text=userInfoHidden and "SHOW INFO" or "HIDE INFO"
-   end
+    local okDecode, decoded = pcall(function()
+        return HttpService:JSONDecode(encoded)
+    end)
 
-   own(privacy.Activated:Connect(function()
-    userInfoHidden=not userInfoHidden
-    refreshUserPrivacy()
-   end))
+    if okDecode and type(decoded) == "table" then
+        return decoded
+    end
 
-   refreshUserPrivacy()
+    return {}
+end
 
-   local sc=card(UDim2.new(.5,5,0,49),UDim2.new(.5,-5,0,159),"SESSION INFO")
-   registerUserSearch("Session Info",sc)
-   local started=os.time()-math.floor(math.max(tonumber(time())or 0,tonumber(workspace.DistributedGameTime)or 0))
-   local function dur(n)n=math.max(0,math.floor(n or 0));return string.format("%02d:%02d:%02d",math.floor(n/3600),math.floor((n%3600)/60),n%60)end
-   local play=row(sc,"Play Time",dur(time()),31)
-   row(sc,"Join Time",os.date("%m/%d/%Y %I:%M:%S %p",started),55)
-   row(sc,"Place ID",tostring(game.PlaceId),79)
-   row(sc,"Job ID",tostring(game.JobId or "-"),103)
+local LoadedConfig = loadAutoConfig()
 
-   local rejoin=hover(sc,"REJOIN",UDim2.new(0,12,0,132),UDim2.new(.5,-18,0,20))
-   local rs=rejoin:FindFirstChildOfClass("UIStroke")
-   if rs then rs:Destroy() end
+local LoadedSelectedEggOrder =
+    copyStringList(LoadedConfig.SelectedEggOrder)
 
-   own(rejoin.Activated:Connect(function()
-    if type(u.OnRejoin)=="function"then
-     u.OnRejoin()
-     return
+do
+    local filtered = {}
+
+    for index = 1, #LoadedSelectedEggOrder do
+        local eggName = LoadedSelectedEggOrder[index]
+        local info = EggData[eggName]
+
+        if type(info) == "table"
+            and info.MaxAmount ~= nil
+        then
+            filtered[#filtered + 1] = eggName
+        end
+    end
+
+    LoadedSelectedEggOrder = filtered
+end
+
+local LoadedESPSelectedEggOrder =
+    copyStringList(LoadedConfig.ESPSelectedEggOrder)
+
+local LoadedGearOrder =
+    copyStringList(LoadedConfig.SelectedGearOrder)
+
+local LoadedFoodOrder =
+    copyStringList(LoadedConfig.SelectedFoodOrder)
+
+local LoadedAutoFarmEnabled =
+    LoadedConfig.AutoFarmEnabled == true
+
+local LoadedHatchEggOrder =
+    copyStringList(
+        LoadedConfig.HatchSelectedEggOrder
+    )
+
+do
+    local valid = {}
+
+    for index = 1, #HATCH_EGG_OPTIONS do
+        valid[HATCH_EGG_OPTIONS[index]] = true
+    end
+
+    local filtered = {}
+
+    for index = 1, #LoadedHatchEggOrder do
+        local eggName =
+            LoadedHatchEggOrder[index]
+
+        if valid[eggName] then
+            filtered[#filtered + 1] =
+                eggName
+        end
+    end
+
+    LoadedHatchEggOrder = filtered
+end
+
+local LoadedAutoHatchEnabled =
+    LoadedConfig.AutoHatchEnabled == true
+
+local LoadedAutoEquipBestEnabled =
+    LoadedConfig.AutoEquipBestEnabled == true
+
+local LoadedEggWebhookUrl =
+    tostring(
+        LoadedConfig.EggWebhookUrl
+        or LoadedConfig.WebhookUrl
+        or ""
+    )
+
+local LoadedHatchWebhookUrl =
+    tostring(
+        LoadedConfig.HatchWebhookUrl
+        or LoadedConfig.WebhookUrl
+        or ""
+    )
+
+local LoadedWebhookEggPickupEnabled =
+    LoadedConfig.WebhookEggPickupEnabled == true
+
+local LoadedWebhookHatchEnabled =
+    LoadedConfig.WebhookHatchEnabled == true
+
+local LoadedLowGraphicsEnabled =
+    LoadedConfig.LowGraphicsEnabled == true
+
+-- =========================================================
+-- ROBUST GUI LIBRARY LOADER
+-- Everything is isolated inside one function scope to avoid
+-- the 200-local limit in this large Ride A Pet script.
+-- =========================================================
+local Library = (function()
+    local urls = {
+        LIBRARY_URL,
+        "https://raw.githubusercontent.com/rhiannamilagros-png/WW/refs/heads/main/new5.lua",
+        "https://cdn.jsdelivr.net/gh/rhiannamilagros-png/WW@main/new5.lua",
+    }
+
+    local cacheFile =
+        "ScoopHub/scopsgui_cache.lua"
+
+    local function validSource(value)
+        if type(value) ~= "string"
+            or #value < 100
+        then
+            return false
+        end
+
+        local prefix =
+            string.lower(
+                string.sub(
+                    value,
+                    1,
+                    math.min(#value, 300)
+                )
+            )
+
+        if string.find(
+            prefix,
+            "<html",
+            1,
+            true
+        )
+            or string.find(
+                prefix,
+                "<!doctype",
+                1,
+                true
+            )
+        then
+            return false
+        end
+
+        return true
+    end
+
+    local function requestFunction()
+        local fn = nil
+
+        pcall(function()
+            if syn
+                and type(syn.request)
+                    == "function"
+            then
+                fn = syn.request
+            end
+        end)
+
+        pcall(function()
+            if not fn
+                and http
+                and type(http.request)
+                    == "function"
+            then
+                fn = http.request
+            end
+        end)
+
+        if not fn
+            and type(http_request)
+                == "function"
+        then
+            fn = http_request
+        end
+
+        if not fn
+            and type(request)
+                == "function"
+        then
+            fn = request
+        end
+
+        return fn
+    end
+
+    local function fetch(url)
+        local separator =
+            string.find(
+                url,
+                "?",
+                1,
+                true
+            )
+            and "&"
+            or "?"
+
+        local finalUrl =
+            url
+            .. separator
+            .. "scoopcb="
+            .. tostring(os.time())
+            .. "_"
+            .. tostring(
+                math.floor(
+                    os.clock() * 1000
+                )
+            )
+
+        local okHttp, body =
+            pcall(function()
+                return game:HttpGet(
+                    finalUrl
+                )
+            end)
+
+        if okHttp
+            and validSource(body)
+        then
+            return body, nil
+        end
+
+        local lastError =
+            tostring(body)
+
+        local fn =
+            requestFunction()
+
+        if fn then
+            local okRequest, response =
+                pcall(function()
+                    return fn({
+                        Url = finalUrl,
+                        Method = "GET",
+                        Headers = {
+                            ["Accept"] =
+                                "text/plain,*/*",
+                            ["Cache-Control"] =
+                                "no-cache",
+                        },
+                    })
+                end)
+
+            if okRequest
+                and type(response)
+                    == "table"
+            then
+                local status =
+                    tonumber(
+                        response.StatusCode
+                        or response.Status
+                        or response.status_code
+                    )
+
+                local responseBody =
+                    response.Body
+                    or response.body
+
+                if (
+                    not status
+                    or (
+                        status >= 200
+                        and status < 300
+                    )
+                )
+                    and validSource(
+                        responseBody
+                    )
+                then
+                    return responseBody, nil
+                end
+
+                lastError =
+                    "HTTP "
+                    .. tostring(
+                        status
+                        or "unknown"
+                    )
+            elseif not okRequest then
+                lastError =
+                    tostring(response)
+            end
+        end
+
+        return nil, lastError
+    end
+
+    local function cache(source)
+        if type(writefile)
+                ~= "function"
+            or not validSource(source)
+        then
+            return
+        end
+
+        pcall(function()
+            ensureConfigFolder()
+
+            writefile(
+                cacheFile,
+                source
+            )
+        end)
+    end
+
+    local function readCache()
+        if type(readfile)
+                ~= "function"
+        then
+            return nil
+        end
+
+        if type(isfile)
+            == "function"
+        then
+            local okExists, exists =
+                pcall(function()
+                    return isfile(
+                        cacheFile
+                    )
+                end)
+
+            if not okExists
+                or exists ~= true
+            then
+                return nil
+            end
+        end
+
+        local okRead, cached =
+            pcall(function()
+                return readfile(
+                    cacheFile
+                )
+            end)
+
+        if okRead
+            and validSource(cached)
+        then
+            return cached
+        end
+
+        return nil
+    end
+
+    local source = nil
+    local loadedFrom = nil
+    local lastError =
+        "Unknown network error"
+
+    for attempt = 1, 2 do
+        for index = 1, #urls do
+            local body, err =
+                fetch(urls[index])
+
+            if validSource(body) then
+                source = body
+                loadedFrom =
+                    urls[index]
+
+                cache(source)
+                break
+            end
+
+            if err
+                and tostring(err)
+                    ~= ""
+            then
+                lastError =
+                    tostring(err)
+            end
+
+            task.wait(0.15)
+        end
+
+        if source then
+            break
+        end
+
+        task.wait(0.35)
+    end
+
+    if not source then
+        source =
+            readCache()
+
+        if source then
+            loadedFrom =
+                "local-cache"
+
+        end
+    end
+
+    if not validSource(source) then
+        error(
+            "SCOOPHUB PREMIUM: failed to download GUI library. "
+            .. "Last error: "
+            .. tostring(lastError)
+        )
+    end
+
+    if type(loadstring)
+            ~= "function"
+    then
+        error(
+            "SCOOPHUB PREMIUM: loadstring is unavailable"
+        )
+    end
+
+    local chunk, compileError =
+        loadstring(source)
+
+    if not chunk then
+        error(
+            "SCOOPHUB PREMIUM: GUI library compile error: "
+            .. tostring(
+                compileError
+            )
+        )
+    end
+
+    local okLibrary, result =
+        pcall(chunk)
+
+    if not okLibrary
+        or type(result)
+            ~= "table"
+    then
+        error(
+            "SCOOPHUB PREMIUM: GUI library failed to initialize: "
+            .. tostring(result)
+        )
+    end
+
+    return result
+end)()
+
+local Session = {
+    Closed = false,
+    AutoFarmEnabled = false,
+    FarmRunId = 0,
+
+    -- Multi-select Grind Egg targets.
+    SelectedEggs = listToSet(LoadedSelectedEggOrder),
+    SelectedEggOrder = copyStringList(LoadedSelectedEggOrder),
+
+    -- Egg ESP state.
+    ESPEnabled = LoadedConfig.ESPEnabled == true,
+    ESPSelectedEggs = listToSet(LoadedESPSelectedEggOrder),
+    ESPSelectedEggOrder = copyStringList(LoadedESPSelectedEggOrder),
+    ESPDropdown = nil,
+    ESPObjects = {},
+
+    Dropdown = nil,
+    Connections = {},
+
+    -- User tab / LocalPlayer settings.
+    WalkSpeedEnabled = LoadedConfig.WalkSpeedEnabled == true,
+    WalkSpeedValue = math.clamp(
+        tonumber(LoadedConfig.WalkSpeedValue) or 16,
+        0,
+        500
+    ),
+    OriginalWalkSpeed = nil,
+    InfiniteJumpEnabled = LoadedConfig.InfiniteJumpEnabled == true,
+    LowGraphicsEnabled = false,
+
+    -- Shop multi-select state.
+    SelectedGears = listToSet(LoadedGearOrder),
+    SelectedGearOrder = copyStringList(LoadedGearOrder),
+    SelectedFood = listToSet(LoadedFoodOrder),
+    SelectedFoodOrder = copyStringList(LoadedFoodOrder),
+    GearAutoBuyEnabled = LoadedConfig.GearAutoBuyEnabled == true,
+    FoodAutoBuyEnabled = LoadedConfig.FoodAutoBuyEnabled == true,
+    GearDropdown = nil,
+    FoodDropdown = nil,
+
+    -- Hidden final settings.
+    ReturnFlySpeed = math.clamp(
+        tonumber(LoadedConfig.ReturnFlySpeed) or 300,
+        1,
+        500
+    ),
+    ReturnWalkDistance = 8,
+    FenceOutsideOffset = 4,
+    PickupMaxAttempts = 3,
+    PickupRetryDelay = 0.45,
+
+    LastEggPickupStatus = nil,
+    LastEggPickupStatusAt = 0,
+    FarmDebugStage = "idle",
+
+    -- Auto Hatch.
+    AutoHatchEnabled = false,
+    HatchRunId = 0,
+    HatchSelectedEggs =
+        listToSet(LoadedHatchEggOrder),
+    HatchSelectedEggOrder =
+        copyStringList(LoadedHatchEggOrder),
+    HatchLastRequest = {},
+
+    -- Auto Equip Best Pet.
+    AutoEquipBestEnabled = false,
+    AutoEquipBestBusy = false,
+    AutoEquipBestKnownPets = {},
+    AutoEquipBestConnections = {},
+    AutoEquipBestCooldown = 5,
+    AutoEquipBestLastRunAt = -math.huge,
+    AutoEquipBestPending = false,
+    AutoEquipBestWorkerRunning = false,
+
+    -- Discord webhook.
+    -- Customer/private destinations are editable in the GUI
+    -- and show the FULL Roblox username.
+    EggWebhookUrl =
+        LoadedEggWebhookUrl,
+    HatchWebhookUrl =
+        LoadedHatchWebhookUrl,
+
+    WebhookEggPickupEnabled =
+        LoadedWebhookEggPickupEnabled,
+    WebhookHatchEnabled =
+        LoadedWebhookHatchEnabled,
+
+    -- HUB WEBHOOKS:
+    -- Paste your ScoopHub community webhook URLs here.
+    -- These are intentionally NOT exposed in the GUI.
+    -- Hub messages keep the censored PLAYER field.
+    HubEggWebhookUrl = "https://discord.com/api/webhooks/1552902478532583467/2dEr7G1L7rRjXt6-xrcoPaKS6Q1fUU6JAN343hdx9-FDXGIoUrW5eVxzLi0u0hWcKy-Z",
+    HubHatchWebhookUrl = "https://discord.com/api/webhooks/1552922582276374548/b7Y-GwtfOhB-yh_6y6N238BvhZeHZWnwOqCzyUrua4A2bCIhRs2KDtVOCiDxCyJqP4PP",
+
+    WebhookQueue = {},
+    WebhookWorkerRunning = false,
+    WebhookImageCache = {},
+    WebhookPendingHatches = {},
+    WebhookPendingPickup = {},
+    WebhookPendingDeposits = {},
+    WebhookSeenBasketItems = {},
+    WebhookSeenHatchKeys = {},
+}
+
+if #Session.SelectedEggOrder == 0
+    and FARM_EGG_OPTIONS[1]
+then
+    Session.SelectedEggs[FARM_EGG_OPTIONS[1]] = true
+    Session.SelectedEggOrder[1] = FARM_EGG_OPTIONS[1]
+end
+
+if #Session.HatchSelectedEggOrder == 0
+    and HATCH_EGG_OPTIONS[1]
+then
+    Session.HatchSelectedEggs[
+        HATCH_EGG_OPTIONS[1]
+    ] = true
+
+    Session.HatchSelectedEggOrder[1] =
+        HATCH_EGG_OPTIONS[1]
+end
+
+Environment.ScoopHubPremiumEggFarmFinal = Session
+
+local AutoSaveQueued = false
+local LastSavedConfigJson = nil
+
+local function copyListForSave(source)
+    local result = {}
+
+    for index = 1, #source do
+        result[index] = source[index]
+    end
+
+    return result
+end
+
+local function saveConfigNow()
+    if not CONFIG_SUPPORTED then
+        return false
+    end
+
+    ensureConfigFolder()
+
+    local prefs =
+        _G.ScoopHubPremiumUserPreferences
+        or {}
+
+    local data = {
+        Version = 1,
+        AutoFarmEnabled = Session.AutoFarmEnabled == true,
+        SelectedEggOrder = copyListForSave(Session.SelectedEggOrder),
+
+        AutoHatchEnabled =
+            Session.AutoHatchEnabled == true,
+
+        HatchSelectedEggOrder =
+            copyListForSave(
+                Session.HatchSelectedEggOrder
+            ),
+
+        AutoEquipBestEnabled =
+            Session.AutoEquipBestEnabled == true,
+
+        EggWebhookUrl =
+            tostring(
+                Session.EggWebhookUrl
+                or ""
+            ),
+
+        HatchWebhookUrl =
+            tostring(
+                Session.HatchWebhookUrl
+                or ""
+            ),
+
+        WebhookEggPickupEnabled =
+            Session.WebhookEggPickupEnabled == true,
+
+        WebhookHatchEnabled =
+            Session.WebhookHatchEnabled == true,
+
+        ReturnFlySpeed = Session.ReturnFlySpeed,
+        ESPEnabled = Session.ESPEnabled == true,
+        ESPSelectedEggOrder = copyListForSave(Session.ESPSelectedEggOrder),
+        WalkSpeedEnabled = Session.WalkSpeedEnabled == true,
+        WalkSpeedValue = Session.WalkSpeedValue,
+        InfiniteJumpEnabled = Session.InfiniteJumpEnabled == true,
+        LowGraphicsEnabled = Session.LowGraphicsEnabled == true,
+        SelectedGearOrder = copyListForSave(Session.SelectedGearOrder),
+        SelectedFoodOrder = copyListForSave(Session.SelectedFoodOrder),
+        GearAutoBuyEnabled = Session.GearAutoBuyEnabled == true,
+        FoodAutoBuyEnabled = Session.FoodAutoBuyEnabled == true,
+        UserPreferences = {
+            AutoRejoin = prefs.AutoRejoin == true,
+            LowGraphics = Session.LowGraphicsEnabled == true,
+            Notifications = prefs.Notifications == true,
+            Tooltips = prefs.Tooltips == true,
+        },
+    }
+
+    local okEncode, encoded = pcall(function()
+        return HttpService:JSONEncode(data)
+    end)
+
+    if not okEncode
+        or type(encoded) ~= "string"
+    then
+        return false
+    end
+
+    if encoded == LastSavedConfigJson then
+        return true
+    end
+
+    local okWrite = pcall(function()
+        writefile(CONFIG_FILE, encoded)
+    end)
+
+    if okWrite then
+        LastSavedConfigJson = encoded
+        return true
+    end
+
+    return false
+end
+
+local function scheduleAutoSave()
+    if AutoSaveQueued
+        or Session.Closed
+    then
+        return
+    end
+
+    AutoSaveQueued = true
+
+    task.delay(0.35, function()
+        AutoSaveQueued = false
+
+        if not Session.Closed then
+            saveConfigNow()
+        end
+    end)
+end
+
+
+-- =========================================================
+-- DISCORD WEBHOOK
+-- Confirmed Egg Pickup + Auto Hatch result notifications.
+-- =========================================================
+local WEBHOOK_RARITY_COLORS = {
+    -- Fallbacks mirror GameServices.General.RarityColors.
+    Common = 0xADADAD,
+    Rare = 0x00AAFF,
+    Epic = 0xAA55FF,
+    Legendary = 0xFFAA00,
+    Mythic = 0xFFAAFF,
+    Divine = 0xFFFF00,
+    Ethereal = 0xAAAAFF,
+}
+
+local function getExecutorRequest()
+    local requestFn = nil
+
+    pcall(function()
+        if syn
+            and type(syn.request)
+                == "function"
+        then
+            requestFn = syn.request
+        end
+    end)
+
+    pcall(function()
+        if not requestFn
+            and http
+            and type(http.request)
+                == "function"
+        then
+            requestFn = http.request
+        end
+    end)
+
+    if not requestFn
+        and type(http_request)
+            == "function"
+    then
+        requestFn = http_request
+    end
+
+    if not requestFn
+        and type(request)
+            == "function"
+    then
+        requestFn = request
+    end
+
+    return requestFn
+end
+
+local function trimWebhookText(value)
+    value = tostring(value or "")
+
+    return (
+        string.gsub(
+            value,
+            "^%s*(.-)%s*$",
+            "%1"
+        )
+    )
+end
+
+local function maskWebhookPlayerName(name)
+    name = tostring(name or "")
+
+    if name == "" then
+        return "Unknown"
+    end
+
+    return string.sub(
+        name,
+        1,
+        math.min(3, #name)
+    ) .. "**"
+end
+
+local function webhookLocalTime()
+    local ok, value = pcall(function()
+        return DateTime.now():FormatLocalTime(
+            "M/D/YYYY h:mm A",
+            "en-us"
+        )
+    end)
+
+    if ok
+        and type(value) == "string"
+        and value ~= ""
+    then
+        return value
+    end
+
+    return os.date(
+        "%m/%d/%Y %I:%M %p"
+    )
+end
+
+local function webhookRarityColor(rarity)
+    rarity = tostring(rarity or "")
+
+    local gameColor = nil
+
+    pcall(function()
+        local rarityColors =
+            General.RarityColors
+
+        if type(rarityColors) == "table" then
+            gameColor =
+                rarityColors[rarity]
+        end
+    end)
+
+    if typeof(gameColor) == "Color3" then
+        return
+            math.floor(gameColor.R * 255)
+                * 65536
+            + math.floor(gameColor.G * 255)
+                * 256
+            + math.floor(gameColor.B * 255)
+    end
+
+    return WEBHOOK_RARITY_COLORS[
+        rarity
+    ] or 0xE72F3B
+end
+
+local function webhookWeightText(value)
+    local number =
+        tonumber(value)
+
+    if not number then
+        return "N/A"
+    end
+
+    return string.format(
+        "%.2f KG",
+        number
+    )
+end
+
+local function webhookMutationText(value)
+    if value == nil
+        or value == false
+    then
+        return "None"
+    end
+
+    value = tostring(value)
+
+    if value == ""
+        or string.lower(value)
+            == "none"
+    then
+        return "None"
+    end
+
+    return value
+end
+
+local function extractRobloxAssetId(value)
+    if type(value) == "number" then
+        return tostring(
+            math.floor(value)
+        )
+    end
+
+    value = tostring(value or "")
+
+    local assetId =
+        string.match(
+            value,
+            "rbxassetid://(%d+)"
+        )
+        or string.match(
+            value,
+            "[?&]id=(%d+)"
+        )
+        or string.match(
+            value,
+            "^(%d+)$"
+        )
+
+    return assetId
+end
+
+local function resolveWebhookImage(value)
+    local assetId =
+        extractRobloxAssetId(value)
+
+    if not assetId then
+        local raw =
+            tostring(value or "")
+
+        if string.sub(raw, 1, 8)
+            == "https://"
+            or string.sub(raw, 1, 7)
+                == "http://"
+        then
+            return raw
+        end
+
+        return nil
+    end
+
+    local cached =
+        Session.WebhookImageCache[
+            assetId
+        ]
+
+    if cached then
+        return cached
+    end
+
+    local fallback =
+        "https://www.roblox.com/asset-thumbnail/image?assetId="
+        .. assetId
+        .. "&width=420&height=420&format=png"
+
+    local requestFn =
+        getExecutorRequest()
+
+    if not requestFn then
+        Session.WebhookImageCache[
+            assetId
+        ] = fallback
+
+        return fallback
+    end
+
+    local apiUrl =
+        "https://thumbnails.roblox.com/v1/assets?assetIds="
+        .. assetId
+        .. "&returnPolicy=PlaceHolder&size=420x420&format=Png&isCircular=false"
+
+    local ok, response =
+        pcall(function()
+            return requestFn({
+                Url = apiUrl,
+                Method = "GET",
+                Headers = {
+                    ["Accept"] =
+                        "application/json",
+                },
+            })
+        end)
+
+    if ok
+        and type(response) == "table"
+    then
+        local body =
+            response.Body
+            or response.body
+
+        if type(body) == "string"
+            and body ~= ""
+        then
+            local decodeOk, decoded =
+                pcall(function()
+                    return HttpService:
+                        JSONDecode(body)
+                end)
+
+            if decodeOk
+                and type(decoded)
+                    == "table"
+                and type(decoded.data)
+                    == "table"
+                and type(decoded.data[1])
+                    == "table"
+                and type(
+                    decoded.data[1].imageUrl
+                ) == "string"
+                and decoded.data[1]
+                    .imageUrl ~= ""
+            then
+                Session.WebhookImageCache[
+                    assetId
+                ] =
+                    decoded.data[1]
+                        .imageUrl
+
+                return decoded.data[1]
+                    .imageUrl
+            end
+        end
+    end
+
+    Session.WebhookImageCache[
+        assetId
+    ] = fallback
+
+    return fallback
+end
+
+local function postWebhookEmbed(
+    embed,
+    webhookUrl
+)
+    if Session.Closed then
+        return false,
+            "Script is closed."
+    end
+
+    webhookUrl =
+        trimWebhookText(
+            webhookUrl
+        )
+
+    if webhookUrl == "" then
+        return false,
+            "Webhook URL is empty."
+    end
+
+    local requestFn =
+        getExecutorRequest()
+
+    if not requestFn then
+        return false,
+            "Executor HTTP request is unavailable."
+    end
+
+    local payload = {
+        username =
+            "SCOOPHUB PREMIUM",
+        embeds = {
+            embed,
+        },
+    }
+
+    local encodeOk, body =
+        pcall(function()
+            return HttpService:
+                JSONEncode(payload)
+        end)
+
+    if not encodeOk then
+        return false,
+            "Could not encode webhook payload."
+    end
+
+    local ok, response =
+        pcall(function()
+            return requestFn({
+                Url = webhookUrl,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] =
+                        "application/json",
+                },
+                Body = body,
+            })
+        end)
+
+    if not ok then
+        return false,
+            tostring(response)
+    end
+
+    if type(response) == "table" then
+        local status =
+            tonumber(
+                response.StatusCode
+                or response.Status
+                or response.status_code
+            )
+
+        if status
+            and status ~= 200
+            and status ~= 204
+        then
+            return false,
+                "Discord returned HTTP "
+                .. tostring(status)
+        end
+    end
+
+    return true, "Sent"
+end
+
+local function startWebhookWorker()
+    if Session.WebhookWorkerRunning
+    then
+        return
+    end
+
+    Session.WebhookWorkerRunning = true
+
+    task.spawn(function()
+        while not Session.Closed
+            and #Session.WebhookQueue > 0
+        do
+            local item =
+                table.remove(
+                    Session.WebhookQueue,
+                    1
+                )
+
+            if item
+                and item.Embed
+                and item.Url
+            then
+                local ok, err =
+                    postWebhookEmbed(
+                        item.Embed,
+                        item.Url
+                    )
+
+                if not ok then
+                end
+            end
+
+            task.wait(0.65)
+        end
+
+        Session.WebhookWorkerRunning =
+            false
+
+        if not Session.Closed
+            and #Session.WebhookQueue
+                > 0
+        then
+            startWebhookWorker()
+        end
+    end)
+end
+
+local function queueWebhookEmbed(
+    embed,
+    webhookUrl
+)
+    webhookUrl =
+        trimWebhookText(
+            webhookUrl
+        )
+
+    if webhookUrl == "" then
+        return false
+    end
+
+    Session.WebhookQueue[
+        #Session.WebhookQueue + 1
+    ] = {
+        Embed = embed,
+        Url = webhookUrl,
+    }
+
+    startWebhookWorker()
+
+    return true
+end
+
+local function buildWebhookFooter(source)
+    return {
+        text =
+            "SCOOPHUB PREMIUM • "
+            .. tostring(source)
+            .. " • "
+            .. webhookLocalTime(),
+    }
+end
+
+local function buildEggSecuredEmbed(
+    playerName,
+    eggName,
+    weight,
+    mutation,
+    spawnMutation
+)
+    eggName =
+        tostring(
+            eggName
+            or "Unknown Egg"
+        )
+
+    local config =
+        EggData[eggName]
+        or {}
+
+    local rarity =
+        tostring(
+            config.Rarity
+            or "Unknown"
+        )
+
+    local iconUrl =
+        resolveWebhookImage(
+            config.Image
+        )
+
+    local embed = {
+        title = "EGG SECURED",
+        description =
+            "**"
+            .. eggName
+            .. "** was secured successfully.",
+        color =
+            webhookRarityColor(rarity),
+        fields = {
+            {
+                name = "PLAYER",
+                value =
+                    tostring(
+                        playerName
+                        or "Unknown"
+                    ),
+                inline = true,
+            },
+            {
+                name = "EGG",
+                value = eggName,
+                inline = true,
+            },
+            {
+                name = "RARITY",
+                value = rarity,
+                inline = true,
+            },
+            {
+                name = "WEIGHT",
+                value =
+                    webhookWeightText(
+                        weight
+                    ),
+                inline = true,
+            },
+            {
+                name = "MUTATION",
+                value =
+                    webhookMutationText(
+                        mutation
+                    ),
+                inline = true,
+            },
+            {
+                name =
+                    "SPAWN MUTATION",
+                value =
+                    webhookMutationText(
+                        spawnMutation
+                    ),
+                inline = true,
+            },
+        },
+        footer =
+            buildWebhookFooter(
+                "Egg Pickup"
+            ),
+    }
+
+    if iconUrl then
+        embed.thumbnail = {
+            url = iconUrl,
+        }
+    end
+
+    return embed
+end
+
+local function buildPetHatchedEmbed(
+    playerName,
+    eggName,
+    petName,
+    weight,
+    mutation,
+    spawnMutation
+)
+    eggName =
+        tostring(
+            eggName
+            or "Unknown Egg"
+        )
+
+    petName =
+        tostring(
+            petName
+            or "Unknown Pet"
+        )
+
+    local config =
+        Pets[petName]
+        or {}
+
+    local rarity =
+        tostring(
+            config.Rarity
+            or "Unknown"
+        )
+
+    local iconUrl =
+        resolveWebhookImage(
+            config.Image
+        )
+
+    local embed = {
+        title = "PET HATCHED",
+        description =
+            "**"
+            .. petName
+            .. "** was hatched successfully from **"
+            .. eggName
+            .. "**.",
+        color =
+            webhookRarityColor(rarity),
+        fields = {
+            {
+                name = "PLAYER",
+                value =
+                    tostring(
+                        playerName
+                        or "Unknown"
+                    ),
+                inline = true,
+            },
+            {
+                name = "PET",
+                value = petName,
+                inline = true,
+            },
+            {
+                name = "RARITY",
+                value = rarity,
+                inline = true,
+            },
+            {
+                name = "WEIGHT",
+                value =
+                    webhookWeightText(
+                        weight
+                    ),
+                inline = true,
+            },
+            {
+                name = "MUTATION",
+                value =
+                    webhookMutationText(
+                        mutation
+                    ),
+                inline = true,
+            },
+            {
+                name =
+                    "SPAWN MUTATION",
+                value =
+                    webhookMutationText(
+                        spawnMutation
+                    ),
+                inline = true,
+            },
+        },
+        footer =
+            buildWebhookFooter(
+                "Auto Hatch"
+            ),
+    }
+
+    if iconUrl then
+        embed.thumbnail = {
+            url = iconUrl,
+        }
+    end
+
+    return embed
+end
+
+local function sendEggSecuredWebhook(
+    eggName,
+    weight,
+    mutation,
+    spawnMutation
+)
+    local queued = false
+
+    -- CUSTOMER WEBHOOK: full username.
+    if Session.WebhookEggPickupEnabled
+        and trimWebhookText(
+            Session.EggWebhookUrl
+        ) ~= ""
+    then
+        local customerEmbed =
+            buildEggSecuredEmbed(
+                LocalPlayer.Name,
+                eggName,
+                weight,
+                mutation,
+                spawnMutation
+            )
+
+        if queueWebhookEmbed(
+            customerEmbed,
+            Session.EggWebhookUrl
+        )
+        then
+            queued = true
+        end
+    end
+
+    -- HUB WEBHOOK: censored username.
+    if trimWebhookText(
+        Session.HubEggWebhookUrl
+    ) ~= ""
+    then
+        local hubEmbed =
+            buildEggSecuredEmbed(
+                maskWebhookPlayerName(
+                    LocalPlayer.Name
+                ),
+                eggName,
+                weight,
+                mutation,
+                spawnMutation
+            )
+
+        if queueWebhookEmbed(
+            hubEmbed,
+            Session.HubEggWebhookUrl
+        )
+        then
+            queued = true
+        end
+    end
+
+    return queued
+end
+
+local function sendPetHatchedWebhook(
+    eggName,
+    petName,
+    weight,
+    mutation,
+    spawnMutation
+)
+    local queued = false
+
+    -- CUSTOMER WEBHOOK: full username.
+    if Session.WebhookHatchEnabled
+        and trimWebhookText(
+            Session.HatchWebhookUrl
+        ) ~= ""
+    then
+        local customerEmbed =
+            buildPetHatchedEmbed(
+                LocalPlayer.Name,
+                eggName,
+                petName,
+                weight,
+                mutation,
+                spawnMutation
+            )
+
+        if queueWebhookEmbed(
+            customerEmbed,
+            Session.HatchWebhookUrl
+        )
+        then
+            queued = true
+        end
+    end
+
+    -- HUB WEBHOOK: censored username.
+    if trimWebhookText(
+        Session.HubHatchWebhookUrl
+    ) ~= ""
+    then
+        local hubEmbed =
+            buildPetHatchedEmbed(
+                maskWebhookPlayerName(
+                    LocalPlayer.Name
+                ),
+                eggName,
+                petName,
+                weight,
+                mutation,
+                spawnMutation
+            )
+
+        if queueWebhookEmbed(
+            hubEmbed,
+            Session.HubHatchWebhookUrl
+        )
+        then
+            queued = true
+        end
+    end
+
+    return queued
+end
+
+local function rememberEggPickupWebhookContext(
+    record
+)
+    if not record then
+        return
+    end
+
+    local eggName =
+        record:GetAttribute("Egg")
+
+    if type(eggName) ~= "string"
+        or eggName == ""
+    then
+        return
+    end
+
+    Session.WebhookPendingPickup[
+        eggName
+    ] = {
+        At = os.clock(),
+        Weight =
+            record:GetAttribute(
+                "Weight"
+            ),
+        Mutation =
+            record:GetAttribute(
+                "Mutation"
+            ),
+        SpawnMutation =
+            record:GetAttribute(
+                "SpawnMutation"
+            ),
+    }
+end
+
+local function consumeEggPickupWebhookContext(
+    eggName
+)
+    local context =
+        Session.WebhookPendingPickup[
+            eggName
+        ]
+
+    if not context then
+        return nil
+    end
+
+    Session.WebhookPendingPickup[
+        eggName
+    ] = nil
+
+    if os.clock()
+            - (context.At or 0)
+        > 10
+    then
+        return nil
+    end
+
+    return context
+end
+
+local function queueConfirmedEggForDepositWebhook(
+    eggName
+)
+    eggName =
+        tostring(eggName or "")
+
+    if eggName == "" then
+        return false
+    end
+
+    -- Stage 1 confirmation:
+    -- the pickup has reached LocalPlayer.Basket.
+    -- DO NOT send Discord yet. "EGG SECURED" should only
+    -- happen after the game reports EggPickup = "Deposited".
+    local context =
+        consumeEggPickupWebhookContext(
+            eggName
+        )
+
+    if not context then
+        return false
+    end
+
+    Session.WebhookPendingDeposits[
+        #Session.WebhookPendingDeposits + 1
+    ] = {
+        EggName = eggName,
+        Weight = context.Weight,
+        Mutation = context.Mutation,
+        SpawnMutation =
+            context.SpawnMutation,
+        HeldAt = os.clock(),
+    }
+
+    return true
+end
+
+local function flushDepositedEggWebhooks()
+    if #Session.WebhookPendingDeposits
+        == 0
+    then
+        return 0
+    end
+
+    -- "Deposited" is the game's actual delivery/secure event.
+    -- A return-to-plot can deposit the carried basket contents
+    -- together, so send every confirmed-held pending egg here.
+    local pending =
+        Session.WebhookPendingDeposits
+
+    Session.WebhookPendingDeposits = {}
+
+    local sent = 0
+
+    for index = 1, #pending do
+        local context =
+            pending[index]
+
+        if type(context) == "table"
+            and context.EggName
+        then
+            local age =
+                os.clock()
+                - tonumber(
+                    context.HeldAt
+                )
+
+            -- Ignore stale records from an abandoned pickup.
+            if age <= 60 then
+                local ok =
+                    sendEggSecuredWebhook(
+                        context.EggName,
+                        context.Weight,
+                        context.Mutation,
+                        context.SpawnMutation
+                    )
+
+                if ok then
+                    sent = sent + 1
+                end
+            end
+        end
+    end
+
+    return sent
+end
+
+
+local function snapshotWebhookOwnedPetKeys()
+    local keys = {}
+
+    local containers = {
+        LocalPlayer.Character,
+        Backpack,
+    }
+
+    for containerIndex = 1, #containers do
+        local container =
+            containers[containerIndex]
+
+        if container then
+            local children =
+                container:GetChildren()
+
+            for index = 1, #children do
+                local child =
+                    children[index]
+
+                if child:IsA("Tool")
+                    and child:HasTag("Pet")
+                then
+                    local petKey =
+                        child:GetAttribute(
+                            "PetKey"
+                        )
+
+                    if petKey ~= nil then
+                        keys[
+                            tostring(petKey)
+                        ] = true
+                    end
+                end
+            end
+        end
     end
 
     pcall(function()
-     if game.JobId and game.JobId~=""then
-      TeleportService:TeleportToPlaceInstance(game.PlaceId,game.JobId,LP)
-     else
-      TeleportService:Teleport(game.PlaceId,LP)
-     end
+        local allPets =
+            PetRenderer.GetAll()
+
+        if type(allPets) == "table" then
+            for _, pet in pairs(allPets) do
+                if type(pet) == "table"
+                    and pet.OwnerUserId
+                        == LocalPlayer.UserId
+                    and pet.PetKey ~= nil
+                then
+                    keys[
+                        tostring(pet.PetKey)
+                    ] = true
+                end
+            end
+        end
     end)
-   end))
 
-   local serverHopButton=C(N("TextButton",{
-    Text="SERVER HOP",
-    Position=UDim2.new(.5,6,0,132),
-    Size=UDim2.new(.5,-18,0,20),
-    BackgroundColor3=T.RedDark,
-    BorderSizePixel=0,
-    AutoButtonColor=false,
-    TextColor3=T.White,
-    Font=T.Font,
-    TextSize=11,
-   },sc),4)
-   S(serverHopButton,T.Red,.42,1)
+    return keys
+end
 
-   self.UserDashboard={
-    PlayerCard=pc,
-    SessionCard=sc,
-    CopyUserIdButton=copy,
-    PrivacyButton=privacy,
-    RejoinButton=rejoin,
-    ServerHopButton=serverHopButton,
-    UsernameLabel=usernameValue,
-    UserIdLabel=userIdValue,
-    DisplayNameLabel=displayNameValue,
-   }
+local function findNewWebhookPet(
+    knownKeys,
+    expectedPetName
+)
+    knownKeys =
+        type(knownKeys) == "table"
+        and knownKeys
+        or {}
 
-   local serverHopBusy=false
+    expectedPetName =
+        tostring(expectedPetName or "")
 
-   local function doServerHop()
-    if serverHopBusy then
-     return
+    local containers = {
+        Backpack,
+        LocalPlayer.Character,
+    }
+
+    for containerIndex = 1, #containers do
+        local container =
+            containers[containerIndex]
+
+        if container then
+            local children =
+                container:GetChildren()
+
+            for index = 1, #children do
+                local child =
+                    children[index]
+
+                if child:IsA("Tool")
+                    and child:HasTag("Pet")
+                then
+                    local rawKey =
+                        child:GetAttribute(
+                            "PetKey"
+                        )
+
+                    local petName =
+                        child:GetAttribute(
+                            "PetName"
+                        )
+                        or child.Name
+
+                    if rawKey ~= nil
+                        and not knownKeys[
+                            tostring(rawKey)
+                        ]
+                        and (
+                            expectedPetName == ""
+                            or tostring(petName)
+                                == expectedPetName
+                        )
+                    then
+                        return child,
+                            tostring(rawKey)
+                    end
+                end
+            end
+        end
     end
 
-    serverHopBusy=true
-    serverHopButton.Text="SEARCHING..."
+    local foundModel = nil
+    local foundKey = nil
 
-    task.spawn(function()
-     local placeId=game.PlaceId
-     local currentJobId=tostring(game.JobId or "")
-     local cursor=nil
-     local found=false
+    pcall(function()
+        local allPets =
+            PetRenderer.GetAll()
 
-     for _=1,10 do
-      local url=
-       "https://games.roblox.com/v1/games/"
-       ..tostring(placeId)
-       .."/servers/Public?sortOrder=Asc&limit=100&excludeFullGames=true"
+        if type(allPets) ~= "table" then
+            return
+        end
 
-      if cursor and cursor~="" then
-       url=url.."&cursor="..HttpService:UrlEncode(cursor)
-      end
+        for _, pet in pairs(allPets) do
+            if foundKey then
+                break
+            end
 
-      local requestOk,response=pcall(function()
-       return game:HttpGet(url)
-      end)
+            if type(pet) == "table"
+                and pet.OwnerUserId
+                    == LocalPlayer.UserId
+                and pet.PetKey ~= nil
+                and not knownKeys[
+                    tostring(pet.PetKey)
+                ]
+                and pet.Model
+                and pet.Model.Parent
+            then
+                local modelPetName =
+                    pet.Model:GetAttribute(
+                        "PetName"
+                    )
 
-      if not requestOk then
-       break
-      end
+                if expectedPetName == ""
+                    or tostring(
+                        modelPetName or ""
+                    ) == expectedPetName
+                then
+                    foundModel = pet.Model
+                    foundKey =
+                        tostring(pet.PetKey)
+                end
+            end
+        end
+    end)
 
-      local decodeOk,data=pcall(function()
-       return HttpService:JSONDecode(response)
-      end)
+    return foundModel, foundKey
+end
 
-      if not decodeOk or type(data)~="table" then
-       break
-      end
+local function waitForHatchedPetWebhookConfirmation(
+    knownKeys,
+    petName,
+    timeoutSeconds
+)
+    local deadline =
+        os.clock()
+        + (
+            tonumber(timeoutSeconds)
+            or 12
+        )
 
-      for _,server in ipairs(data.data or {}) do
-       local serverId=tostring(server.id or "")
-       local playing=tonumber(server.playing) or 0
-       local maxPlayers=tonumber(server.maxPlayers) or 0
+    while not Session.Closed
+        and os.clock() < deadline
+    do
+        local petObject, petKey =
+            findNewWebhookPet(
+                knownKeys,
+                petName
+            )
 
-       if serverId~=""
-        and serverId~=currentJobId
-        and maxPlayers>0
-        and playing<maxPlayers
-       then
-        found=true
-        serverHopButton.Text="JOINING..."
+        if petObject and petKey then
+            return petObject, petKey
+        end
 
+        task.wait(0.08)
+    end
+
+    return nil, nil
+end
+
+local hatchWebhookConnection =
+    HatchRemote.OnClientEvent:Connect(
+        function(data)
+            if Session.Closed
+                or typeof(data) ~= "table"
+                or data.Owner ~= LocalPlayer
+            then
+                return
+            end
+
+            local eggKey =
+                data.EggKey
+
+            if eggKey == nil then
+                return
+            end
+
+            eggKey = tostring(eggKey)
+
+            local pending =
+                Session.WebhookPendingHatches[
+                    eggKey
+                ]
+
+            -- Only SCOOPHUB Auto Hatch / Hatch Now
+            -- creates this pending record.
+            if not pending then
+                return
+            end
+
+            Session.WebhookPendingHatches[
+                eggKey
+            ] = nil
+
+            if Session.WebhookSeenHatchKeys[
+                eggKey
+            ] then
+                return
+            end
+
+            -- Reserve this EggKey immediately so a duplicate
+            -- Hatch event cannot start a second confirmation worker.
+            Session.WebhookSeenHatchKeys[
+                eggKey
+            ] = "confirming"
+
+            local petName =
+                data.PetName
+
+            if type(petName) ~= "string"
+                or petName == ""
+            then
+                Session.WebhookSeenHatchKeys[
+                    eggKey
+                ] = nil
+                return
+            end
+
+            local eggName =
+                pending.EggName
+
+            local knownKeys =
+                pending.KnownPetKeys
+                or {}
+
+            task.spawn(function()
+                -- Do NOT send from Hatch.OnClientEvent.
+                -- Wait until the new PetKey really exists in
+                -- Backpack / Character / placed pets.
+                local petObject, petKey =
+                    waitForHatchedPetWebhookConfirmation(
+                        knownKeys,
+                        petName,
+                        12
+                    )
+
+                if not petObject
+                    or not petKey
+                then
+                    Session.WebhookSeenHatchKeys[
+                        eggKey
+                    ] = nil
+
+
+                    return
+                end
+
+                Session.WebhookSeenHatchKeys[
+                    eggKey
+                ] = true
+
+                local weight =
+                    petObject:GetAttribute(
+                        "Weight"
+                    )
+
+                local mutation =
+                    petObject:GetAttribute(
+                        "Mutation"
+                    )
+
+                local spawnMutation =
+                    petObject:GetAttribute(
+                        "SpawnMutation"
+                    )
+
+                -- The confirmed Tool / placed Model is preferred.
+                -- Fall back to the server hatch payload if an
+                -- attribute has not replicated yet.
+                if weight == nil then
+                    weight = data.Weight
+                end
+
+                if mutation == nil then
+                    mutation =
+                        data.Mutation
+                end
+
+                if spawnMutation == nil then
+                    spawnMutation =
+                        data.SpawnMutation
+                end
+
+                sendPetHatchedWebhook(
+                    eggName,
+                    petName,
+                    weight,
+                    mutation,
+                    spawnMutation
+                )
+            end)
+        end
+    )
+
+Session.Connections[
+    #Session.Connections + 1
+] = hatchWebhookConnection
+
+local WalkSpeedGuard
+local WalkSpeedBindId = 0
+
+local function getLocalHumanoid(character)
+    character = character or LocalPlayer.Character
+
+    return character
+        and character:FindFirstChildOfClass("Humanoid")
+        or nil
+end
+
+-- =========================================================
+-- ANTI-AFK
+-- Reacts to Idled and also presses Space every random 3-5 minutes.
+-- =========================================================
+local function sendAntiAFKSpace()
+    if Session.Closed then
+        return false
+    end
+
+    local focused = nil
+
+    pcall(function()
+        focused = UserInputService:GetFocusedTextBox()
+    end)
+
+    if focused then
+        return false
+    end
+
+    local humanoid = getLocalHumanoid()
+
+    if not humanoid
+        or humanoid.Health <= 0
+    then
+        return false
+    end
+
+    local ok = pcall(function()
+        VirtualInputManager:SendKeyEvent(
+            true,
+            Enum.KeyCode.Space,
+            false,
+            game
+        )
+
+        task.wait(0.06)
+
+        VirtualInputManager:SendKeyEvent(
+            false,
+            Enum.KeyCode.Space,
+            false,
+            game
+        )
+    end)
+
+    return ok
+end
+
+local function waitAntiAFK(seconds)
+    local deadline = os.clock() + seconds
+
+    while not Session.Closed
+        and os.clock() < deadline
+    do
+        task.wait(2)
+    end
+
+    return not Session.Closed
+end
+
+local antiAFKIdleConnection =
+    LocalPlayer.Idled:Connect(function()
+        sendAntiAFKSpace()
+    end)
+
+Session.Connections[#Session.Connections + 1] =
+    antiAFKIdleConnection
+
+task.spawn(function()
+    while not Session.Closed do
+        local delaySeconds = math.random(180, 300)
+
+        if not waitAntiAFK(delaySeconds) then
+            break
+        end
+
+        sendAntiAFKSpace()
+    end
+end)
+
+local function disconnectWalkSpeedGuard()
+    WalkSpeedBindId = WalkSpeedBindId + 1
+
+    if WalkSpeedGuard then
         pcall(function()
-         TeleportService:TeleportToPlaceInstance(
-          placeId,
-          serverId,
-          LP
-         )
+            WalkSpeedGuard:Disconnect()
         end)
 
-        return
-       end
-      end
+        WalkSpeedGuard = nil
+    end
+end
 
-      cursor=data.nextPageCursor
+local function restoreWalkSpeed()
+    disconnectWalkSpeedGuard()
 
-      if not cursor or cursor=="" then
-       break
-      end
-     end
+    local humanoid = getLocalHumanoid()
 
-     if not found and serverHopButton.Parent then
-      serverHopButton.Text="NO SERVER FOUND"
+    if humanoid
+        and Session.OriginalWalkSpeed ~= nil
+    then
+        humanoid.WalkSpeed =
+            Session.OriginalWalkSpeed
+    end
 
-      task.delay(1.4,function()
-       if serverHopButton.Parent then
-        serverHopButton.Text="SERVER HOP"
-       end
-      end)
-     end
+    Session.OriginalWalkSpeed = nil
+end
 
-     serverHopBusy=false
+local function bindWalkSpeedCharacter(character)
+    disconnectWalkSpeedGuard()
+
+    local currentBindId = WalkSpeedBindId
+
+    task.spawn(function()
+        local humanoid =
+            character:FindFirstChildOfClass("Humanoid")
+            or character:WaitForChild("Humanoid", 10)
+
+        if not humanoid
+            or currentBindId ~= WalkSpeedBindId
+            or Session.Closed
+            or not Session.WalkSpeedEnabled
+            or character ~= LocalPlayer.Character
+        then
+            return
+        end
+
+        Session.OriginalWalkSpeed =
+            humanoid.WalkSpeed
+
+        humanoid.WalkSpeed =
+            Session.WalkSpeedValue
+
+        WalkSpeedGuard =
+            humanoid:GetPropertyChangedSignal(
+                "WalkSpeed"
+            ):Connect(function()
+                if currentBindId
+                        == WalkSpeedBindId
+                    and Session.WalkSpeedEnabled
+                    and not Session.Closed
+                    and humanoid.Parent
+                    and humanoid.WalkSpeed
+                        ~= Session.WalkSpeedValue
+                then
+                    humanoid.WalkSpeed =
+                        Session.WalkSpeedValue
+                end
+            end)
+
+        table.insert(
+            Session.Connections,
+            WalkSpeedGuard
+        )
     end)
-   end
+end
 
-   own(serverHopButton.MouseEnter:Connect(function()
-    tw(serverHopButton,{BackgroundColor3=T.Red},.1)
-   end))
-
-   own(serverHopButton.MouseLeave:Connect(function()
-    tw(serverHopButton,{BackgroundColor3=T.RedDark},.1)
-   end))
-
-   own(serverHopButton.Activated:Connect(doServerHop))
-   registerUserSearch("Server Hop",serverHopButton)
-   registerUserSearch("Job ID",sc)
-   registerUserSearch("Place ID",sc)
-   registerUserSearch("Play Time",sc)
-   registerUserSearch("Join Time",sc)
-
-   task.spawn(function()while not window.Closed and play.Parent do if P.Visible then play.Text=dur(math.max(time(),workspace.DistributedGameTime,os.time()-started));task.wait(1)else task.wait(.5)end end end)
-
-   local pref=card(UDim2.new(0,0,0,217),UDim2.new(.5,-5,1,-217),"PREFERENCES")
-   registerUserSearch("Preferences",pref)
-   local a=tog(pref,"Auto Rejoin","Rejoin automatically after disconnect.",31,prefs.AutoRejoin==true,function(v)prefs.AutoRejoin=v;if type(u.OnAutoRejoin)=="function"then u.OnAutoRejoin(v)end end)
-   local l=tog(pref,"Low Graphics Mode","Reduce effects for better FPS.",66,prefs.LowGraphics==true,function(v)prefs.LowGraphics=v;stars.Visible=not v;if type(u.OnLowGraphics)=="function"then u.OnLowGraphics(v)end end)
-   local n=tog(pref,"UI Notifications","Enable ScoopHub notifications.",101,prefs.Notifications==true,function(v)prefs.Notifications=v;window.NotificationsEnabled=v end)
-   local tt=tog(pref,"Show Tooltips","Show helpful descriptions.",136,prefs.Tooltips==true,function(v)prefs.Tooltips=v;window.TooltipsEnabled=v end)
-   window.NotificationsEnabled=prefs.Notifications==true;window.TooltipsEnabled=prefs.Tooltips==true;stars.Visible=prefs.LowGraphics~=true
-
-   registerUserSearch("Auto Rejoin",pref)
-   registerUserSearch("Low Graphics Mode",pref)
-   registerUserSearch("UI Notifications",pref)
-   registerUserSearch("Show Tooltips",pref)
-
-   local lc=card(UDim2.new(.5,5,0,217),UDim2.new(.5,-5,1,-217),"LOCALPLAYER")
-   registerUserSearch("LocalPlayer",lc)
-   local q=u.LocalPlayer or {}
-   label(lc,"WalkSpeed Value",UDim2.new(0,12,0,31),UDim2.new(1,-24,0,14),11,T.Muted,T.Body)
-   local wi=C(N("TextBox",{Text=tostring(q.WalkSpeedValue or 16),PlaceholderText="16",ClearTextOnFocus=false,Font=T.Body,TextSize=12,TextColor3=T.White,
-    PlaceholderColor3=T.Muted,TextXAlignment=Enum.TextXAlignment.Left,BackgroundColor3=T.Input,BorderSizePixel=0,Position=UDim2.new(0,12,0,48),Size=UDim2.new(1,-24,0,27)},lc),5)
-   N("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8)},wi);S(wi,T.Stroke,.75,1)
-   own(wi.FocusLost:Connect(function(e)if type(q.OnWalkSpeedValue)=="function"then q.OnWalkSpeedValue(wi.Text,e)end end))
-   local ws=tog(lc,"WalkSpeed","",87,q.WalkSpeed==true,q.OnWalkSpeed)
-   local ij=tog(lc,"InfiniteJump","",122,q.InfiniteJump==true,q.OnInfiniteJump)
-
-   registerUserSearch("WalkSpeed Value",wi)
-   registerUserSearch("WalkSpeed",lc)
-   registerUserSearch("InfiniteJump",lc)
-   registerUserSearch("Copy User ID",copy)
-   registerUserSearch("Rejoin",rejoin)
-   return{PlayerCard=pc,SessionCard=sc,PreferencesCard=pref,LocalPlayerCard=lc,AutoRejoin=a,LowGraphics=l,Notifications=n,Tooltips=tt,WalkSpeedInput=wi,WalkSpeed=ws,InfiniteJump=ij}
-  end
-
-  if not active then open(name) end
-  return tab
- end
-
- -- exact sidebar search field geometry + feature search
- local SearchBox=C(N("TextBox",{
-  Name="ScoopHubGlobalSearch",
-  Position=UDim2.fromOffset(6,7),
-  Size=UDim2.new(1,-12,0,29),
-  BackgroundColor3=T.Surface3,
-  BackgroundTransparency=.04,
-  BorderSizePixel=0,
-  Text="",
-  PlaceholderText="Search...",
-  PlaceholderColor3=T.Muted,
-  TextColor3=T.White,
-  Font=T.Body,
-  TextSize=10,
-  TextXAlignment=Enum.TextXAlignment.Left,
-  ClearTextOnFocus=false,
-  ZIndex=410,
- },Side),5)
-
- S(SearchBox,T.Line,.55,1)
- N("UIPadding",{
-  PaddingLeft=UDim.new(0,9),
-  PaddingRight=UDim.new(0,7),
- },SearchBox)
-
- local SearchResults=C(N("Frame",{
-  Name="ScoopHubGlobalSearchResults",
-  Visible=false,
-  Position=UDim2.fromOffset(SIDE+6,7),
-  Size=UDim2.fromOffset(300,0),
-  BackgroundColor3=T.Panel,
-  BackgroundTransparency=.02,
-  BorderSizePixel=0,
-  ClipsDescendants=true,
-  ZIndex=1000,
- },Body),6)
-
- S(SearchResults,T.Line,.22,1.2)
-
- local SearchScroll=N("ScrollingFrame",{
-  Position=UDim2.fromOffset(4,4),
-  Size=UDim2.new(1,-8,1,-8),
-  BackgroundTransparency=1,
-  BorderSizePixel=0,
-  CanvasSize=UDim2.new(),
-  ScrollBarThickness=3,
-  ScrollBarImageColor3=T.Red,
-  ZIndex=1001,
- },SearchResults)
-
- local SearchLayout=N("UIListLayout",{
-  Padding=UDim.new(0,2),
-  SortOrder=Enum.SortOrder.LayoutOrder,
- },SearchScroll)
-
- local searchRows={}
-
- local function clearSearchRows()
-  for _,rowObject in ipairs(searchRows) do
-   if rowObject and rowObject.Parent then
-    rowObject:Destroy()
-   end
-  end
-  table.clear(searchRows)
- end
-
- local function scrollToTarget(tab,target)
-  if not tab or not target then
-   return
-  end
-
-  if tab.Scroll
-   and target:IsDescendantOf(tab.Scroll)
-  then
-   task.defer(function()
-    if not tab.Scroll or not tab.Scroll.Parent or not target.Parent then
-     return
-    end
-
-    local scaleValue=math.max(tonumber(Scale.Scale) or 1,.01)
-    local targetY=(target.AbsolutePosition.Y-tab.Scroll.AbsolutePosition.Y)/scaleValue
-    local current=tab.Scroll.CanvasPosition.Y
-    local wanted=math.max(0,current+targetY-18)
-
-    tab.Scroll.CanvasPosition=Vector2.new(
-     tab.Scroll.CanvasPosition.X,
-     wanted
+table.insert(
+    Session.Connections,
+    LocalPlayer.CharacterAdded:Connect(
+        function(character)
+            if Session.WalkSpeedEnabled then
+                bindWalkSpeedCharacter(character)
+            end
+        end
     )
-   end)
-  end
- end
+)
 
- local function rebuildSearchResults()
-  clearSearchRows()
+table.insert(
+    Session.Connections,
+    UserInputService.JumpRequest:Connect(
+        function()
+            if not Session.InfiniteJumpEnabled
+                or Session.Closed
+            then
+                return
+            end
 
-  local query=string.lower(
-   tostring(SearchBox.Text or "")
-  )
+            local humanoid =
+                getLocalHumanoid()
 
-  if query=="" then
-   SearchResults.Visible=false
-   SearchResults.Size=UDim2.fromOffset(300,0)
-   return
-  end
+            if humanoid
+                and humanoid.Health > 0
+            then
+                humanoid:ChangeState(
+                    Enum.HumanoidStateType.Jumping
+                )
+            end
+        end
+    )
+)
 
-  local matches={}
-  local seen={}
 
-  -- Preserve tab order: USER -> AUTOMATION -> SHOP -> future tabs.
-  for _,tabName in ipairs(Order) do
-   local tab=Tabs[tabName]
+-- Low Graphics Mode
+-- FPS-focused version.
+--
+-- Goal:
+--   * Keep the game fully playable.
+--   * Keep the original part/model colors.
+--   * Do NOT cap FPS.
+--   * Do NOT disable 3D rendering.
+--   * Do NOT suspend Ride A Pet gameplay/client loops.
+--   * Remove expensive 3D textures, decorative VFX, and textured materials from Workspace objects.
+--
+-- The initial Workspace pass runs in the background and yields in batches,
+-- which avoids the large freeze that heavy obfuscation can cause.
+local LowGraphicsOriginals = {}
+local LowGraphicsConnection = nil
+local LowGraphicsRunId = 0
 
-   if tab then
-    local tabTitle=string.upper(tabName)
-
-    for _,item in ipairs(tab.SearchItems or {}) do
-     local itemTitle=tostring(item.Title or "")
-     local haystack=string.lower(tabName.." "..itemTitle)
-
-     if itemTitle~=""
-      and string.find(haystack,query,1,true)
-     then
-      local key=string.lower(tabName.."\31"..itemTitle)
-
-      if not seen[key] then
-       seen[key]=true
-       matches[#matches+1]={
-        Tab=tabName,
-        TabLabel=tabTitle,
-        Title=itemTitle,
-        Target=item.Target,
-       }
-      end
-     end
-
-     if #matches>=8 then
-      break
-     end
+local function rememberLowGraphicsState(
+    object,
+    state
+)
+    if not LowGraphicsOriginals[object] then
+        LowGraphicsOriginals[object] =
+            state
     end
-
-    if #matches>=8 then
-     break
-    end
-   end
-  end
-
-  if #matches==0 then
-   SearchResults.Visible=false
-   SearchResults.Size=UDim2.fromOffset(300,0)
-   return
-  end
-
-  for index,entry in ipairs(matches) do
-   local row=C(N("TextButton",{
-    Text="",
-    Size=UDim2.new(1,-3,0,34),
-    BackgroundColor3=T.Surface2,
-    BackgroundTransparency=.08,
-    BorderSizePixel=0,
-    AutoButtonColor=false,
-    LayoutOrder=index,
-    ZIndex=1002,
-   },SearchScroll),4)
-
-   searchRows[#searchRows+1]=row
-
-   local resultText=entry.TabLabel.." - "..entry.Title
-
-   local resultLabel=label(
-    row,
-    resultText,
-    UDim2.new(0,9,0,0),
-    UDim2.new(1,-18,1,0),
-    10,
-    T.White,
-    T.Font
-   )
-   resultLabel.ZIndex=1003
-
-   own(row.MouseEnter:Connect(function()
-    tw(row,{BackgroundColor3=Color3.fromRGB(54,24,31)},.1)
-   end))
-
-   own(row.MouseLeave:Connect(function()
-    tw(row,{BackgroundColor3=T.Surface2},.1)
-   end))
-
-   own(row.Activated:Connect(function()
-    local tab=Tabs[entry.Tab]
-
-    SearchBox.Text=""
-    SearchResults.Visible=false
-
-    open(entry.Tab)
-
-    if tab then
-     scrollToTarget(tab,entry.Target)
-    end
-   end))
-  end
-
-  local resultHeight=math.min(#matches,8)*36+8
-
-  SearchResults.Size=UDim2.fromOffset(
-   300,
-   math.min(resultHeight,296)
-  )
-
-  SearchScroll.CanvasSize=UDim2.new(
-   0,
-   0,
-   0,
-   SearchLayout.AbsoluteContentSize.Y+4
-  )
-
-  SearchResults.Visible=true
- end
-
- own(SearchBox:GetPropertyChangedSignal("Text"):Connect(
-  rebuildSearchResults
- ))
-
- own(SearchBox.FocusLost:Connect(function()
-  if SearchBox.Text=="" then
-   SearchResults.Visible=false
-  end
- end))
-
- function window:Notify(info,force)
-  info=info or {};if force~=true and not self.NotificationsEnabled then return end
-  local old=GP:FindFirstChild("ScoopHubDiscordNotification");if old then old:Destroy()end
-  local ng=N("ScreenGui",{Name="ScoopHubDiscordNotification",ResetOnSpawn=false,ZIndexBehavior=Enum.ZIndexBehavior.Sibling},GP)
-  local nf=C(N("Frame",{AnchorPoint=Vector2.new(1,1),BackgroundColor3=T.Panel,BorderSizePixel=0,Position=UDim2.new(1,400,1,-30),Size=UDim2.fromOffset(320,70)},ng),8);S(nf,T.Line,.22)
-  local first=label(nf,tostring(info.Title or "ScoopHub"),UDim2.fromOffset(12,8),UDim2.fromOffset(180,20),14,T.White,T.Font)
-  local desc=tostring(info.Description or "");if desc~=""then local second=label(nf," "..desc,UDim2.fromOffset(12,8),UDim2.fromOffset(120,20),14,T.Red,T.Font);task.defer(function()if second.Parent then second.Position=UDim2.new(0,12+first.TextBounds.X,0,8)end end)end
-  label(nf,tostring(info.Content or ""),UDim2.fromOffset(12,35),UDim2.new(1,-48,0,24),12,T.Muted,T.Body)
-  local x=N("TextButton",{Text="X",Font=T.Font,TextSize=14,TextColor3=Color3.fromRGB(200,200,200),BackgroundTransparency=1,AnchorPoint=Vector2.new(1,0),Position=UDim2.new(1,-8,0,6),Size=UDim2.fromOffset(22,22),BorderSizePixel=0},nf)
-  own(x.Activated:Connect(function()if ng.Parent then ng:Destroy()end end));tw(nf,{Position=UDim2.new(1,-30,1,-30)},.35)
-  task.delay(tonumber(info.Delay)or 5,function()if ng.Parent then tw(nf,{Position=UDim2.new(1,400,1,-30)},.3);task.delay(.35,function()if ng.Parent then ng:Destroy()end end)end end)
- end
- own(Discord.Activated:Connect(function()
-  local copied=false;pcall(function()if setclipboard then setclipboard(invite);copied=true elseif toclipboard then toclipboard(invite);copied=true end end)
-  window:Notify({Title="ScoopHub",Description="Discord",Content=copied and ("Copied to clipboard: "..invite) or "Clipboard is unavailable in this executor.",Delay=5},true)
- end))
-
- local minimized=false;local expanded=Holder.Position;local miniPos=nil
- local Mini=C(N("TextButton",{Name="MiniLauncher",Visible=false,Text="",AutoButtonColor=false,AnchorPoint=Vector2.new(.5,.5),Position=Holder.Position,Size=UDim2.fromOffset(48,48),BackgroundColor3=T.Bg,BackgroundTransparency=.03,BorderSizePixel=0,ZIndex=500},SG),12);S(Mini,T.Red,.35,1)
- N("ImageLabel",{Image=cfg.Logo or "rbxassetid://90541504618217",BackgroundTransparency=1,AnchorPoint=Vector2.new(.5,.5),Position=UDim2.fromScale(.5,.5),Size=UDim2.fromOffset(36,36),ZIndex=501},Mini)
- local function miniDefault()local c=workspace.CurrentCamera;if not c then return expanded end;local v=c.ViewportSize;local p=Min.AbsolutePosition;local s=Min.AbsoluteSize;return UDim2.fromOffset(math.clamp(p.X+s.X/2,28,v.X-28),math.clamp(p.Y+s.Y/2,28,v.Y-28))end
- local function setMin(v)minimized=v==true;if minimized then expanded=Holder.Position;if not miniPos then miniPos=miniDefault()end;Mini.Position=miniPos;Mini.Visible=true;Body.Visible=false;Holder.Visible=false;Min.Text="+"else miniPos=Mini.Position;Holder.Position=expanded;Holder.Visible=true;Body.Visible=true;Mini.Visible=false;Min.Text="-"end end
- own(Min.Activated:Connect(function()setMin(not minimized)end))
- local dh,dm=false,false;local moved=false;local sm,sp;local touch=nil
- own(Header.InputBegan:Connect(function(i)if minimized then return end;if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dh=true;dm=false;touch=i.UserInputType==Enum.UserInputType.Touch and i or nil;sm=i.Position;sp=Holder.Position end end))
- own(Mini.InputBegan:Connect(function(i)if not minimized then return end;if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dm=true;dh=false;moved=false;touch=i.UserInputType==Enum.UserInputType.Touch and i or nil;sm=i.Position;sp=Mini.Position end end))
- own(Mini.Activated:Connect(function()if minimized and not moved then setMin(false)end end))
- own(UIS.InputEnded:Connect(function(i)local a=i.UserInputType==Enum.UserInputType.MouseButton1;local b=i.UserInputType==Enum.UserInputType.Touch and i==touch;if a or b then dm=false;dh=false;touch=nil end end))
- own(UIS.InputChanged:Connect(function(i)
-  local mm=i.UserInputType==Enum.UserInputType.MouseMovement and touch==nil;local mt=i.UserInputType==Enum.UserInputType.Touch and i==touch
-  if not(mm or mt)or not(dh or dm)then return end;local d=i.Position-sm;local cam=workspace.CurrentCamera;if not cam then return end;local v=cam.ViewportSize
-  local bx=v.X*sp.X.Scale+sp.X.Offset+d.X;local by=v.Y*sp.Y.Scale+sp.Y.Offset+d.Y
-  if dm then if d.Magnitude>=6 then moved=true end;Mini.Position=UDim2.fromOffset(math.clamp(bx,28,v.X-28),math.clamp(by,28,v.Y-28));miniPos=Mini.Position
-  else local sw,sh=W*Scale.Scale,H*Scale.Scale;Holder.Position=UDim2.fromOffset(math.clamp(bx,sw/2+4,v.X-sw/2-4),math.clamp(by,sh/2+4,v.Y-sh/2-4));expanded=Holder.Position end
- end))
-
- function window:Destroy()
-  if self.Closed then return end;self.Closed=true;Library.Unloaded=true
-  for i=#conns,1,-1 do pcall(function()conns[i]:Disconnect()end);conns[i]=nil end
-  if SG.Parent then SG:Destroy()end
- end
- own(Close.Activated:Connect(function()if type(cfg.OnClose)=="function"then pcall(cfg.OnClose)end;window:Destroy()end))
- return window
 end
 
-function Library:SetNotification(info)
- local w=self._LastWindow;if w and not w.Closed then w:Notify(info,false)end
+local function stripWorkspaceTexture(object)
+    if not object
+        or not object.Parent
+    then
+        return
+    end
+
+    local className =
+        object.ClassName
+
+    -- Flatten textured materials while preserving the object's color.
+    -- This removes grass/wood/metal surface patterns and leaves a plain color.
+    if object:IsA("BasePart") then
+        local currentMaterial =
+            object.Material
+
+        local currentVariant = nil
+        pcall(function()
+            currentVariant =
+                object.MaterialVariant
+        end)
+
+        local currentReflectance = 0
+        pcall(function()
+            currentReflectance =
+                object.Reflectance
+        end)
+
+        local needsFlatten =
+            currentMaterial
+                ~= Enum.Material.SmoothPlastic
+            or (
+                type(currentVariant) == "string"
+                and currentVariant ~= ""
+            )
+            or currentReflectance ~= 0
+
+        if needsFlatten then
+            local state =
+                LowGraphicsOriginals[
+                    object
+                ]
+
+            if not state then
+                state = {
+                    Kind = "BasePart",
+                    Material =
+                        currentMaterial,
+                    MaterialVariant =
+                        currentVariant,
+                    Reflectance =
+                        currentReflectance,
+                }
+
+                LowGraphicsOriginals[
+                    object
+                ] = state
+            else
+                if state.Material == nil then
+                    state.Material =
+                        currentMaterial
+                end
+
+                if state.MaterialVariant == nil then
+                    state.MaterialVariant =
+                        currentVariant
+                end
+
+                if state.Reflectance == nil then
+                    state.Reflectance =
+                        currentReflectance
+                end
+            end
+
+            pcall(function()
+                object.Material =
+                    Enum.Material.SmoothPlastic
+            end)
+
+            pcall(function()
+                object.MaterialVariant = ""
+            end)
+
+            pcall(function()
+                object.Reflectance = 0
+            end)
+        end
+    end
+
+    -- Normal Roblox Decal/Texture objects.
+    -- Transparency is used instead of deleting the instance so the
+    -- original appearance can be restored when Low Graphics is disabled.
+    if className == "Decal"
+        or className == "Texture"
+    then
+        if object.Transparency < 1 then
+            rememberLowGraphicsState(
+                object,
+                {
+                    Kind = "ImageTexture",
+                    Transparency =
+                        object.Transparency,
+                }
+            )
+
+            object.Transparency = 1
+        end
+
+        return
+    end
+
+    -- MeshPart baked/albedo texture.
+    -- Removing TextureID keeps the MeshPart's original Color and Material.
+    if className == "MeshPart" then
+        local textureId =
+            object.TextureID
+
+        if textureId ~= "" then
+            local state =
+                LowGraphicsOriginals[
+                    object
+                ]
+
+            if not state then
+                state = {
+                    Kind = "MeshPart",
+                    TextureID =
+                        textureId,
+                }
+
+                LowGraphicsOriginals[
+                    object
+                ] = state
+            elseif state.TextureID == nil then
+                state.TextureID =
+                    textureId
+            end
+
+            object.TextureID = ""
+        end
+
+        return
+    end
+
+    -- Legacy meshes.
+    if className == "SpecialMesh" then
+        local textureId =
+            object.TextureId
+
+        if textureId ~= "" then
+            rememberLowGraphicsState(
+                object,
+                {
+                    Kind = "SpecialMesh",
+                    TextureId =
+                        textureId,
+                }
+            )
+
+            object.TextureId = ""
+        end
+
+        return
+    end
+
+    -- PBR SurfaceAppearance maps.
+    -- These are often among the heaviest texture assets in modern Roblox maps.
+    if className == "SurfaceAppearance" then
+        local colorMap =
+            object.ColorMap
+
+        local metalnessMap =
+            object.MetalnessMap
+
+        local normalMap =
+            object.NormalMap
+
+        local roughnessMap =
+            object.RoughnessMap
+
+        if colorMap ~= ""
+            or metalnessMap ~= ""
+            or normalMap ~= ""
+            or roughnessMap ~= ""
+        then
+            rememberLowGraphicsState(
+                object,
+                {
+                    Kind =
+                        "SurfaceAppearance",
+                    ColorMap =
+                        colorMap,
+                    MetalnessMap =
+                        metalnessMap,
+                    NormalMap =
+                        normalMap,
+                    RoughnessMap =
+                        roughnessMap,
+                }
+            )
+
+            object.ColorMap = ""
+            object.MetalnessMap = ""
+            object.NormalMap = ""
+            object.RoughnessMap = ""
+        end
+
+        return
+    end
+
+    -- Decorative VFX around pets, eggs and map objects.
+    -- Keep the actual model/UI/gameplay object; only disable its visual effect.
+    if className == "ParticleEmitter"
+        or className == "Trail"
+        or className == "Beam"
+        or className == "Smoke"
+        or className == "Fire"
+        or className == "Sparkles"
+        or className == "Highlight"
+        or className == "PointLight"
+        or className == "SpotLight"
+        or className == "SurfaceLight"
+    then
+        local ok, enabled =
+            pcall(function()
+                return object.Enabled
+            end)
+
+        if ok and enabled ~= false then
+            rememberLowGraphicsState(
+                object,
+                {
+                    Kind = "VisualEffect",
+                    Enabled = enabled,
+                }
+            )
+
+            pcall(function()
+                object.Enabled = false
+            end)
+        end
+
+        return
+    end
 end
 
-return Library
+local function restoreWorkspaceTextures()
+    for object, state in pairs(
+        LowGraphicsOriginals
+    ) do
+        if object
+            and object.Parent
+            and type(state) == "table"
+        then
+            local kind =
+                state.Kind
+
+            if kind == "BasePart" then
+                pcall(function()
+                    object.Material =
+                        state.Material
+                end)
+
+                pcall(function()
+                    object.MaterialVariant =
+                        state.MaterialVariant
+                        or ""
+                end)
+
+                pcall(function()
+                    object.Reflectance =
+                        state.Reflectance
+                        or 0
+                end)
+
+            elseif kind == "ImageTexture" then
+                pcall(function()
+                    object.Transparency =
+                        state.Transparency
+                end)
+
+            elseif kind == "MeshPart" then
+                pcall(function()
+                    object.TextureID =
+                        state.TextureID
+                        or ""
+                end)
+
+            elseif kind == "SpecialMesh" then
+                pcall(function()
+                    object.TextureId =
+                        state.TextureId
+                        or ""
+                end)
+
+            elseif kind
+                == "SurfaceAppearance"
+            then
+                pcall(function()
+                    object.ColorMap =
+                        state.ColorMap
+                        or ""
+
+                    object.MetalnessMap =
+                        state.MetalnessMap
+                        or ""
+
+                    object.NormalMap =
+                        state.NormalMap
+                        or ""
+
+                    object.RoughnessMap =
+                        state.RoughnessMap
+                        or ""
+                end)
+
+            elseif kind == "VisualEffect" then
+                pcall(function()
+                    object.Enabled =
+                        state.Enabled
+                end)
+            end
+        end
+    end
+
+    clearTableCompat(
+        LowGraphicsOriginals
+    )
+end
+
+local function disconnectLowGraphicsWatcher()
+    if LowGraphicsConnection then
+        pcall(function()
+            LowGraphicsConnection:
+                Disconnect()
+        end)
+
+        LowGraphicsConnection = nil
+    end
+end
+
+local function startLowGraphicsPass(runId)
+    local descendants =
+        Workspace:GetDescendants()
+
+    -- Instant pass:
+    -- process the full Workspace immediately with no task.wait/yield.
+    for index = 1, #descendants do
+        if Session.Closed
+            or not Session.LowGraphicsEnabled
+            or LowGraphicsRunId ~= runId
+        then
+            return
+        end
+
+        stripWorkspaceTexture(
+            descendants[index]
+        )
+    end
+end
+
+local function setLowGraphicsMode(enabled)
+    enabled = enabled == true
+
+    if Session.LowGraphicsEnabled
+        == enabled
+    then
+        return
+    end
+
+    Session.LowGraphicsEnabled = enabled
+    LowGraphicsRunId =
+        LowGraphicsRunId + 1
+
+    disconnectLowGraphicsWatcher()
+
+    if not enabled then
+        restoreWorkspaceTextures()
+        return
+    end
+
+    local runId =
+        LowGraphicsRunId
+
+    -- Strip every existing Workspace texture immediately.
+    startLowGraphicsPass(
+        runId
+    )
+
+    -- Strip textures from new eggs, pets, characters, map objects, etc.
+    -- This avoids repeatedly rescanning Workspace.
+    LowGraphicsConnection =
+        Workspace.DescendantAdded:
+            Connect(function(object)
+                if Session.LowGraphicsEnabled
+                    and not Session.Closed
+                    and LowGraphicsRunId
+                        == runId
+                then
+                    stripWorkspaceTexture(
+                        object
+                    )
+                end
+            end)
+end
+
+
+local function notify(title, content, delay)
+    pcall(function()
+        Library:SetNotification({
+            Title = "SCOOPHUB PREMIUM",
+            Description = title,
+            Content = content,
+            Delay = delay or 3,
+        })
+    end)
+end
+
+local function getCharacterRoot()
+    local character = LocalPlayer.Character
+    if not character then
+        return nil, nil
+    end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local root = character:FindFirstChild("HumanoidRootPart")
+
+    return humanoid, root
+end
+
+local function hasCollected(eggName)
+    local collected = LocalPlayer:GetAttribute("CollectedEggs")
+
+    return typeof(collected) == "string"
+        and collected ~= ""
+        and string.find(
+            collected,
+            tostring(eggName) .. ",",
+            1,
+            true
+        ) ~= nil
+end
+
+local function recordAvailable(record)
+    if not record or record.Parent ~= ActiveEggs then
+        return false
+    end
+
+    local eggName = record:GetAttribute("Egg")
+    if type(eggName) ~= "string" or eggName == "" then
+        return false
+    end
+
+    local privateTo = record:GetAttribute("PrivateTo")
+    if privateTo ~= nil
+        and privateTo ~= LocalPlayer.UserId
+    then
+        return false
+    end
+
+    if record:GetAttribute("AdminSpawn") ~= true
+        and hasCollected(eggName)
+    then
+        return false
+    end
+
+    local dropEndsAt =
+        tonumber(record:GetAttribute("DropEndsAt"))
+        or 0
+
+    return dropEndsAt <= Workspace:GetServerTimeNow()
+end
+
+local function getRecordPosition(record)
+    if not record then
+        return nil
+    end
+
+    local spawnCFrame =
+        record:GetAttribute("SpawnCFrame")
+
+    if typeof(spawnCFrame) == "CFrame" then
+        return spawnCFrame.Position
+    end
+
+    local position =
+        record:GetAttribute("Position")
+
+    if typeof(position) == "Vector3" then
+        return position
+    end
+
+    return nil
+end
+
+local function availableEggNames()
+    local seen = {}
+    local names = {}
+
+    for _, record in ipairs(ActiveEggs:GetChildren()) do
+        if recordAvailable(record) then
+            local eggName = record:GetAttribute("Egg")
+
+            if eggName and not seen[eggName] then
+                seen[eggName] = true
+                table.insert(names, eggName)
+            end
+        end
+    end
+
+    table.sort(names, function(a, b)
+        local dataA = EggData[a] or {}
+        local dataB = EggData[b] or {}
+
+        local luckA = tonumber(dataA.Luck) or 0
+        local luckB = tonumber(dataB.Luck) or 0
+
+        if luckA ~= luckB then
+            return luckA < luckB
+        end
+
+        return a < b
+    end)
+
+    return names
+end
+
+local function findNearestRecord(eggName)
+    local _, root = getCharacterRoot()
+    local origin = root and root.Position or Vector3.new(0, 0, 0)
+
+    local best
+    local bestPosition
+    local bestDistance = math.huge
+
+    for _, record in ipairs(ActiveEggs:GetChildren()) do
+        if record:GetAttribute("Egg") == eggName
+            and recordAvailable(record)
+        then
+            local position = getRecordPosition(record)
+
+            if position then
+                local distance =
+                    (origin - position).Magnitude
+
+                if distance < bestDistance then
+                    bestDistance = distance
+                    best = record
+                    bestPosition = position
+                end
+            end
+        end
+    end
+
+    return best, bestPosition, bestDistance
+end
+
+
+local function hasSelectedEggs()
+    return next(Session.SelectedEggs) ~= nil
+end
+
+local function findNearestSelectedRecord()
+    Session.FarmDebugStage = "find-record:get-character"
+
+    local character = LocalPlayer.Character
+    local root = character
+        and character:FindFirstChild("HumanoidRootPart")
+        or nil
+
+    local origin = root
+        and root.Position
+        or Vector3.new(0, 0, 0)
+
+    local best = nil
+    local bestPosition = nil
+    local bestDistance = math.huge
+    local bestRarityRank = -math.huge
+    local bestLuck = -math.huge
+
+    Session.FarmDebugStage = "find-record:get-children"
+    local records = ActiveEggs:GetChildren()
+
+    Session.FarmDebugStage = "find-record:player-collected"
+    local collectedEggs = LocalPlayer:GetAttribute("CollectedEggs")
+
+    Session.FarmDebugStage = "find-record:server-time"
+    local serverNow = Workspace:GetServerTimeNow()
+
+    local recordCount = #records
+
+    for index = 1, recordCount do
+        local record = records[index]
+
+        if record and record.Parent == ActiveEggs then
+            Session.FarmDebugStage = "find-record:egg-attribute"
+            local eggName = record:GetAttribute("Egg")
+
+            if type(eggName) == "string"
+                and eggName ~= ""
+                and Session.SelectedEggs[eggName]
+            then
+                Session.FarmDebugStage = "find-record:private-check"
+                local privateTo = record:GetAttribute("PrivateTo")
+
+                if privateTo == nil
+                    or privateTo == LocalPlayer.UserId
+                then
+                    Session.FarmDebugStage = "find-record:admin-check"
+                    local adminSpawn =
+                        record:GetAttribute("AdminSpawn") == true
+
+                    local alreadyCollected = false
+
+                    if not adminSpawn
+                        and type(collectedEggs) == "string"
+                        and collectedEggs ~= ""
+                    then
+                        Session.FarmDebugStage = "find-record:collected-check"
+
+                        alreadyCollected =
+                            string.find(
+                                collectedEggs,
+                                eggName .. ",",
+                                1,
+                                true
+                            ) ~= nil
+                    end
+
+                    if not alreadyCollected then
+                        Session.FarmDebugStage = "find-record:drop-time"
+                        local dropEndsAt =
+                            tonumber(
+                                record:GetAttribute("DropEndsAt")
+                            ) or 0
+
+                        if dropEndsAt <= serverNow then
+                            Session.FarmDebugStage = "find-record:position"
+
+                            local position = nil
+                            local spawnCFrame =
+                                record:GetAttribute("SpawnCFrame")
+
+                            if typeof(spawnCFrame) == "CFrame" then
+                                position = spawnCFrame.Position
+                            else
+                                local positionAttribute =
+                                    record:GetAttribute("Position")
+
+                                if typeof(positionAttribute) == "Vector3" then
+                                    position = positionAttribute
+                                end
+                            end
+
+                            if position then
+                                Session.FarmDebugStage = "find-record:egg-data"
+                                local eggInfo =
+                                    EggData[eggName] or {}
+
+                                local rarityRank =
+                                    RARITY_ORDER[
+                                        eggInfo.Rarity
+                                    ] or 0
+
+                                local luck =
+                                    tonumber(eggInfo.Luck)
+                                    or 0
+
+                                Session.FarmDebugStage = "find-record:distance"
+                                local distance =
+                                    (origin - position).Magnitude
+
+                                local shouldReplace =
+                                    rarityRank > bestRarityRank
+                                    or (
+                                        rarityRank == bestRarityRank
+                                        and luck > bestLuck
+                                    )
+                                    or (
+                                        rarityRank == bestRarityRank
+                                        and luck == bestLuck
+                                        and distance < bestDistance
+                                    )
+
+                                if shouldReplace then
+                                    bestRarityRank = rarityRank
+                                    bestLuck = luck
+                                    bestDistance = distance
+                                    best = record
+                                    bestPosition = position
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    Session.FarmDebugStage = "find-record:complete"
+    return best, bestPosition, bestDistance
+end
+
+local function getSelectedEggText()
+    if #Session.SelectedEggOrder == 0 then
+        return "selected eggs"
+    end
+
+    return table.concat(
+        Session.SelectedEggOrder,
+        ", "
+    )
+end
+
+
+local function getESPColorForEgg(eggName)
+    local rarity =
+        EggData[eggName]
+        and EggData[eggName].Rarity
+        or "Unknown"
+
+    local colors = {
+        Common = Color3.fromRGB(235, 235, 235),
+        Rare = Color3.fromRGB(70, 150, 255),
+        Epic = Color3.fromRGB(190, 95, 255),
+        Legendary = Color3.fromRGB(255, 220, 70),
+        Mythic = Color3.fromRGB(255, 80, 110),
+        Divine = Color3.fromRGB(80, 235, 255),
+        Ethereal = Color3.fromRGB(255, 145, 70),
+    }
+
+    return colors[rarity]
+        or Color3.fromRGB(255, 80, 95)
+end
+
+function Session:RemoveEggESP(model)
+    local object = self.ESPObjects[model]
+
+    if not object then
+        return
+    end
+
+    if object.Highlight then
+        pcall(function()
+            object.Highlight:Destroy()
+        end)
+    end
+
+    if object.Billboard then
+        pcall(function()
+            object.Billboard:Destroy()
+        end)
+    end
+
+    self.ESPObjects[model] = nil
+end
+
+function Session:ClearEggESP()
+    local models = {}
+
+    for model in pairs(self.ESPObjects) do
+        table.insert(models, model)
+    end
+
+    for _, model in ipairs(models) do
+        self:RemoveEggESP(model)
+    end
+end
+
+function Session:CreateEggESP(model)
+    if self.ESPObjects[model]
+        or not model:IsA("Model")
+    then
+        return
+    end
+
+    local eggName = model.Name
+
+    if not self.ESPSelectedEggs[eggName] then
+        return
+    end
+
+    local anchorPart =
+        model:FindFirstChild("Handle")
+        or model:FindFirstChildWhichIsA(
+            "BasePart",
+            true
+        )
+
+    if not anchorPart then
+        return
+    end
+
+    local color =
+        getESPColorForEgg(eggName)
+
+    local highlight =
+        Instance.new("Highlight")
+
+    highlight.Name =
+        "ScoopHubPremiumEggESP"
+    highlight.DepthMode =
+        Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillColor = color
+    highlight.FillTransparency = 0.78
+    highlight.OutlineColor = color
+    highlight.OutlineTransparency = 0
+    highlight.Adornee = model
+    highlight.Parent = model
+
+    local billboard =
+        Instance.new("BillboardGui")
+
+    billboard.Name =
+        "ScoopHubPremiumEggLabel"
+    billboard.Adornee = anchorPart
+    billboard.AlwaysOnTop = true
+    billboard.LightInfluence = 0
+    billboard.MaxDistance = 10000
+    billboard.Size =
+        UDim2.fromOffset(210, 48)
+    billboard.StudsOffsetWorldSpace =
+        Vector3.new(0, 3.5, 0)
+    billboard.Parent = anchorPart
+
+    local label =
+        Instance.new("TextLabel")
+
+    label.Name = "Label"
+    label.Size = UDim2.fromScale(1, 1)
+    label.BackgroundTransparency = 1
+    label.RichText = true
+    label.TextColor3 = color
+    label.TextStrokeColor3 =
+        Color3.fromRGB(0, 0, 0)
+    label.TextStrokeTransparency = 0.15
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextWrapped = true
+    label.Text =
+        "<b>" .. eggName .. "</b>"
+    label.Parent = billboard
+
+    self.ESPObjects[model] = {
+        Highlight = highlight,
+        Billboard = billboard,
+        Label = label,
+        Anchor = anchorPart,
+    }
+end
+
+function Session:UpdateEggESP()
+    if self.Closed then
+        return
+    end
+
+    if not self.ESPEnabled then
+        self:ClearEggESP()
+        return
+    end
+
+    local rendered =
+        Workspace:FindFirstChild(
+            "RenderedEggs"
+        )
+
+    if not rendered then
+        self:ClearEggESP()
+        return
+    end
+
+    local wanted = {}
+
+    for _, model in ipairs(
+        rendered:GetChildren()
+    ) do
+        if model:IsA("Model")
+            and self.ESPSelectedEggs[model.Name]
+        then
+            wanted[model] = true
+            self:CreateEggESP(model)
+        end
+    end
+
+    local stale = {}
+
+    for model in pairs(self.ESPObjects) do
+        if not wanted[model]
+            or not model.Parent
+        then
+            table.insert(stale, model)
+        end
+    end
+
+    for _, model in ipairs(stale) do
+        self:RemoveEggESP(model)
+    end
+
+    local character =
+        LocalPlayer.Character
+
+    local root =
+        character
+        and character:FindFirstChild(
+            "HumanoidRootPart"
+        )
+
+    for model, object in pairs(
+        self.ESPObjects
+    ) do
+        if model.Parent
+            and object.Anchor
+            and object.Anchor.Parent
+            and object.Label
+        then
+            local eggName = model.Name
+
+            local rarity =
+                EggData[eggName]
+                and EggData[eggName].Rarity
+                or "Unknown"
+
+            local distanceText = ""
+
+            if root then
+                local distance =
+                    (
+                        root.Position
+                        - object.Anchor.Position
+                    ).Magnitude
+
+                distanceText =
+                    " • "
+                    .. tostring(
+                        math.floor(
+                            distance + 0.5
+                        )
+                    )
+                    .. " studs"
+            end
+
+            object.Label.Text =
+                "<b>"
+                .. eggName
+                .. "</b>\n"
+                .. rarity
+                .. distanceText
+        end
+    end
+end
+
+local function findRenderedEgg(record)
+    if not record then
+        return nil, nil
+    end
+
+    local folder = Workspace:FindFirstChild("RenderedEggs")
+    if not folder then
+        return nil, nil
+    end
+
+    local eggName = record:GetAttribute("Egg")
+    local expectedPosition = getRecordPosition(record)
+
+    local bestModel
+    local bestPrompt
+    local bestDistance = math.huge
+
+    local renderedChildren = folder:GetChildren()
+
+    for index = 1, #renderedChildren do
+        local model = renderedChildren[index]
+
+        if model:IsA("Model")
+            and model.Name == eggName
+        then
+            local prompt =
+                model:FindFirstChildWhichIsA(
+                    "ProximityPrompt",
+                    true
+                )
+
+            local part =
+                prompt
+                and prompt.Parent
+                and prompt.Parent:IsA("BasePart")
+                and prompt.Parent
+                or model:FindFirstChildWhichIsA(
+                    "BasePart",
+                    true
+                )
+
+            if part then
+                local distance = expectedPosition
+                    and (part.Position - expectedPosition).Magnitude
+                    or 0
+
+                if distance < bestDistance then
+                    bestDistance = distance
+                    bestModel = model
+                    bestPrompt = prompt
+                end
+            end
+        end
+    end
+
+    return bestModel, bestPrompt
+end
+
+local function moveNextToPrompt(record)
+    local humanoid, root = getCharacterRoot()
+
+    if not humanoid
+        or not root
+        or humanoid.Health <= 0
+    then
+        return false, "Character is unavailable."
+    end
+
+    local model, prompt = findRenderedEgg(record)
+
+    local targetPart =
+        prompt
+        and prompt.Parent
+        and prompt.Parent:IsA("BasePart")
+        and prompt.Parent
+        or model
+        and model:FindFirstChildWhichIsA(
+            "BasePart",
+            true
+        )
+
+    if not targetPart then
+        local recordPosition = getRecordPosition(record)
+
+        if not recordPosition then
+            return false,
+                "Could not find the rendered egg or record position."
+        end
+
+        root.CFrame =
+            CFrame.new(
+                recordPosition
+                    + Vector3.new(0, 3, 0)
+            )
+
+        task.wait(0.3)
+        return true,
+            "Moved near record position."
+    end
+
+    local maxDistance =
+        prompt
+        and tonumber(prompt.MaxActivationDistance)
+        or 10
+
+    local offset =
+        math.clamp(maxDistance * 0.35, 2, 4)
+
+    root.CFrame =
+        CFrame.new(
+            targetPart.Position
+                + Vector3.new(0, offset, 0)
+        )
+
+    root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+
+    task.wait(0.35)
+
+    return true,
+        prompt
+            and (
+                "Moved inside prompt range ("
+                .. string.format(
+                    "%.1f",
+                    (root.Position - targetPart.Position).Magnitude
+                )
+                .. "/"
+                .. tostring(prompt.MaxActivationDistance)
+                .. " studs)."
+            )
+            or "Moved next to rendered egg."
+end
+
+local function countHeldEgg(eggName)
+    local count = 0
+
+    local carriedEggs = Basket:GetChildren()
+
+    for index = 1, #carriedEggs do
+        local carried = carriedEggs[index]
+
+        if carried:GetAttribute("Egg") == eggName then
+            count = count + 1
+        end
+    end
+
+    return count
+end
+
+local function getBasketTrackerEggsHolder()
+    local playerGui =
+        LocalPlayer:FindFirstChild("PlayerGui")
+
+    local main =
+        playerGui
+        and playerGui:FindFirstChild("Main")
+
+    local basketTracker =
+        main
+        and main:FindFirstChild("BasketTracker")
+
+    return basketTracker
+        and basketTracker:FindFirstChild("EggsHolder")
+        or nil
+end
+
+local function basketUiShowsEgg(eggName)
+    local eggsHolder =
+        getBasketTrackerEggsHolder()
+
+    if not eggsHolder then
+        return false
+    end
+
+    return eggsHolder:FindFirstChild(eggName) ~= nil
+end
+
+local function waitForHeldEgg(
+    eggName,
+    beforeCount,
+    requestStartedAt
+)
+    local deadline = os.clock() + 4
+
+    while os.clock() < deadline do
+        if Session.Closed
+            or not Session.AutoFarmEnabled
+        then
+            return false, "Auto farm stopped."
+        end
+
+        local heldCount =
+            countHeldEgg(eggName)
+
+        if heldCount > beforeCount then
+            local uiConfirmed =
+                basketUiShowsEgg(eggName)
+
+            -- Stage 1 only: the egg is now being carried
+            -- in LocalPlayer.Basket. Queue its webhook data,
+            -- but DO NOT send "EGG SECURED" yet.
+            pcall(function()
+                queueConfirmedEggForDepositWebhook(
+                    eggName
+                )
+            end)
+
+            return true,
+                "Basket confirmed "
+                .. tostring(eggName)
+                .. " is held ("
+                .. tostring(beforeCount)
+                .. " -> "
+                .. tostring(heldCount)
+                .. ")."
+                .. (
+                    uiConfirmed
+                    and " BasketTracker UI also shows it."
+                    or ""
+                )
+        end
+
+        if Session.LastEggPickupStatusAt
+                >= requestStartedAt
+            and Session.LastEggPickupStatus
+                == "BasketFull"
+        then
+            return false,
+                "Pickup failed: basket is full."
+        end
+
+        task.wait(0.05)
+    end
+
+    return false,
+        "Pickup was not confirmed in LocalPlayer.Basket after 4 seconds. "
+        .. "Held count is still "
+        .. tostring(countHeldEgg(eggName))
+        .. "."
+end
+
+local function resetPickupStatus()
+    Session.LastEggPickupStatus = nil
+    Session.LastEggPickupStatusAt = 0
+end
+
+local function pickupShouldStopRetrying()
+    return Session.LastEggPickupStatus == "BasketFull"
+end
+
+local function logRecord(record, prompt)
+    if not record then
+        return
+    end
+
+    local eggName = record:GetAttribute("Egg")
+    local position = getRecordPosition(record)
+    local privateTo = record:GetAttribute("PrivateTo")
+    local dropEndsAt = record:GetAttribute("DropEndsAt")
+    local adminSpawn = record:GetAttribute("AdminSpawn")
+
+
+    if prompt then
+    end
+end
+
+
+local function getOwnPlot()
+    local plot
+
+    local ok = pcall(function()
+        plot = General:GetPlot(LocalPlayer)
+    end)
+
+    if not ok or not plot then
+        return nil, nil, "Could not find your plot."
+    end
+
+    local baseplate = plot:FindFirstChild("Baseplate")
+
+    if not baseplate
+        or not baseplate:IsA("BasePart")
+    then
+        return nil, nil, "Your plot Baseplate was not found."
+    end
+
+    return plot, baseplate
+end
+
+local function isInsideFenceNamedObject(object, plot)
+    local current = object
+
+    while current and current ~= plot do
+        if string.find(
+            string.lower(current.Name),
+            "fence",
+            1,
+            true
+        ) then
+            return true
+        end
+
+        current = current.Parent
+    end
+
+    return false
+end
+
+local function findFenceParts(plot)
+    local parts = {}
+
+    local descendants = plot:GetDescendants()
+
+    for index = 1, #descendants do
+        local object = descendants[index]
+
+        if object:IsA("BasePart")
+            and isInsideFenceNamedObject(object, plot)
+        then
+            parts[#parts + 1] = object
+        end
+    end
+
+    return parts
+end
+
+local function flatVector(vector)
+    return Vector3.new(vector.X, 0, vector.Z)
+end
+
+local function partHalfExtentAlong(part, direction)
+    local right = flatVector(part.CFrame.RightVector)
+    local look = flatVector(part.CFrame.LookVector)
+
+    if right.Magnitude > 0 then
+        right = right.Unit
+    end
+
+    if look.Magnitude > 0 then
+        look = look.Unit
+    end
+
+    return math.abs(direction:Dot(right))
+            * part.Size.X
+            * 0.5
+        + math.abs(direction:Dot(look))
+            * part.Size.Z
+            * 0.5
+end
+
+local function getBaseplateBoundaryRoute(baseplate, currentPosition)
+    local localPosition =
+        baseplate.CFrame:PointToObjectSpace(
+            currentPosition
+        )
+
+    local direction = Vector3.new(
+        localPosition.X,
+        0,
+        localPosition.Z
+    )
+
+    if direction.Magnitude < 0.01 then
+        direction = Vector3.new(0, 0, 1)
+    else
+        direction = direction.Unit
+    end
+
+    local halfX = baseplate.Size.X * 0.5
+    local halfZ = baseplate.Size.Z * 0.5
+
+    local tx = math.huge
+    local tz = math.huge
+
+    if math.abs(direction.X) > 0.001 then
+        tx = halfX / math.abs(direction.X)
+    end
+
+    if math.abs(direction.Z) > 0.001 then
+        tz = halfZ / math.abs(direction.Z)
+    end
+
+    local t = math.min(tx, tz)
+
+    local edgeLocal = direction * t
+    local outsideLocal =
+        edgeLocal
+        + direction
+            * (
+                tonumber(Session.FenceOutsideOffset)
+                or 4
+            )
+
+    local surfaceY =
+        baseplate.Position.Y
+        + baseplate.Size.Y * 0.5
+        + 3
+
+    local outsideWorld =
+        baseplate.CFrame:PointToWorldSpace(
+            Vector3.new(
+                outsideLocal.X,
+                0,
+                outsideLocal.Z
+            )
+        )
+
+    local insideWorld = Vector3.new(
+        baseplate.Position.X,
+        surfaceY,
+        baseplate.Position.Z
+    )
+
+    outsideWorld = Vector3.new(
+        outsideWorld.X,
+        surfaceY,
+        outsideWorld.Z
+    )
+
+    return outsideWorld, insideWorld, nil
+end
+
+local function getFenceBoundaryRoute(
+    plot,
+    baseplate,
+    currentPosition,
+    fenceParts
+)
+    -- Fence discovery is expensive because it scans the entire plot.
+    -- Reuse the list supplied by returnToOwnPlot() instead of rescanning.
+    fenceParts = fenceParts or findFenceParts(plot)
+
+    if #fenceParts == 0 then
+        return getBaseplateBoundaryRoute(
+            baseplate,
+            currentPosition
+        )
+    end
+
+    local closestPart
+    local closestDistance = math.huge
+
+    for index = 1, #fenceParts do
+        local part = fenceParts[index]
+
+        local distance =
+            flatVector(
+                part.Position - currentPosition
+            ).Magnitude
+
+        if distance < closestDistance then
+            closestDistance = distance
+            closestPart = part
+        end
+    end
+
+    if not closestPart then
+        return getBaseplateBoundaryRoute(
+            baseplate,
+            currentPosition
+        )
+    end
+
+    local center = baseplate.Position
+    local outward =
+        flatVector(
+            closestPart.Position - center
+        )
+
+    if outward.Magnitude < 0.01 then
+        outward =
+            flatVector(
+                currentPosition - center
+            )
+    end
+
+    if outward.Magnitude < 0.01 then
+        outward = Vector3.new(0, 0, 1)
+    else
+        outward = outward.Unit
+    end
+
+    local halfExtent =
+        partHalfExtentAlong(
+            closestPart,
+            outward
+        )
+
+    local outsideOffset =
+        math.max(
+            tonumber(Session.FenceOutsideOffset)
+                or 4,
+            3
+        )
+
+    local fenceEdge =
+        closestPart.Position
+        + outward * halfExtent
+
+    local surfaceY =
+        baseplate.Position.Y
+        + baseplate.Size.Y * 0.5
+        + 3
+
+    local outsidePoint =
+        fenceEdge
+        + outward * outsideOffset
+
+    local insidePoint = Vector3.new(
+        baseplate.Position.X,
+        surfaceY,
+        baseplate.Position.Z
+    )
+
+    outsidePoint = Vector3.new(
+        outsidePoint.X,
+        surfaceY,
+        outsidePoint.Z
+    )
+
+
+    return outsidePoint, insidePoint, closestPart
+end
+
+local function setCharacterNoclip(enabled, savedStates)
+    local character = LocalPlayer.Character
+    if not character then
+        return
+    end
+
+    if enabled then
+        local characterDescendants =
+            character:GetDescendants()
+
+        for index = 1, #characterDescendants do
+            local object =
+                characterDescendants[index]
+
+            if object:IsA("BasePart") then
+                if not savedStates[object] then
+                    savedStates[object] = {
+                        CanCollide = object.CanCollide,
+                        CollisionGroup =
+                            object.CollisionGroup,
+                    }
+                end
+
+                object.CanCollide = false
+
+                pcall(function()
+                    object.CollisionGroup =
+                        "NoCollision"
+                end)
+            end
+        end
+
+        return
+    end
+
+    for part, state in pairs(savedStates) do
+        if part and part.Parent then
+            pcall(function()
+                part.CollisionGroup =
+                    state.CollisionGroup
+            end)
+
+            pcall(function()
+                part.CanCollide =
+                    state.CanCollide
+            end)
+        end
+    end
+
+    clearTableCompat(savedStates)
+end
+
+local function setFencePartsNoclip(
+    fenceParts,
+    enabled,
+    savedStates
+)
+    fenceParts = fenceParts or {}
+
+    if enabled then
+        for index = 1, #fenceParts do
+            local part = fenceParts[index]
+
+            if part and part.Parent then
+                if not savedStates[part] then
+                    savedStates[part] = {
+                        CanCollide = part.CanCollide,
+                        CanTouch = part.CanTouch,
+                    }
+                end
+
+                -- Avoid unnecessary property writes every refresh.
+                if part.CanCollide then
+                    part.CanCollide = false
+                end
+
+                if part.CanTouch then
+                    pcall(function()
+                        part.CanTouch = false
+                    end)
+                end
+            end
+        end
+
+        return
+    end
+
+    for part, state in pairs(savedStates) do
+        if part and part.Parent then
+            pcall(function()
+                part.CanCollide = state.CanCollide
+            end)
+
+            pcall(function()
+                part.CanTouch = state.CanTouch
+            end)
+        end
+    end
+
+    clearTableCompat(savedStates)
+end
+
+local function walkPathTo(
+    humanoid,
+    root,
+    destination,
+    stopCheck
+)
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        AgentCanClimb = true,
+        WaypointSpacing = 3,
+    })
+
+    local computed = pcall(function()
+        path:ComputeAsync(
+            root.Position,
+            destination
+        )
+    end)
+
+    local waypoints = {}
+
+    if computed
+        and path.Status
+            == Enum.PathStatus.Success
+    then
+        waypoints = path:GetWaypoints()
+    else
+        waypoints = {
+            {
+                Position = destination,
+                Action =
+                    Enum.PathWaypointAction.Walk,
+            },
+        }
+    end
+
+    for index = 1, #waypoints do
+        local waypoint = waypoints[index]
+
+        if Session.Closed
+            or not Session.AutoFarmEnabled
+            or humanoid.Health <= 0
+            or not root.Parent
+        then
+            return false
+        end
+
+        if stopCheck
+            and stopCheck()
+        then
+            humanoid:MoveTo(root.Position)
+            root.AssemblyLinearVelocity =
+                Vector3.new(0, 0, 0)
+
+            return true, "secured"
+        end
+
+        if waypoint.Action
+            == Enum.PathWaypointAction.Jump
+        then
+            humanoid.Jump = true
+        end
+
+        humanoid:MoveTo(waypoint.Position)
+
+        local deadline = os.clock() + 3
+
+        while os.clock() < deadline do
+            if Session.Closed
+                or humanoid.Health <= 0
+                or not root.Parent
+            then
+                return false
+            end
+
+            if stopCheck
+                and stopCheck()
+            then
+                humanoid:MoveTo(root.Position)
+                root.AssemblyLinearVelocity =
+                    Vector3.new(0, 0, 0)
+
+                return true, "secured"
+            end
+
+            local distance =
+                flatVector(
+                    waypoint.Position
+                        - root.Position
+                ).Magnitude
+
+            if distance <= 2.5 then
+                break
+            end
+
+            task.wait(0.06)
+        end
+    end
+
+    return
+        flatVector(
+            destination - root.Position
+        ).Magnitude <= 4
+end
+
+local function returnToOwnPlot(securedEggName)
+    Session.FarmDebugStage = "return:get-character"
+
+    local humanoid, root = getCharacterRoot()
+
+    if not humanoid
+        or not root
+        or humanoid.Health <= 0
+    then
+        return false, "Character is unavailable."
+    end
+
+    -- The game equips/parents the secured egg into LocalPlayer.Character
+    -- when the player reaches the plot. Snapshot anything already equipped
+    -- so only a NEW matching egg ends this return trip.
+    local secureWatchStartedAt = os.clock()
+    local secureBaseline = {}
+
+    securedEggName =
+        type(securedEggName) == "string"
+        and securedEggName
+        or nil
+
+    local startingCharacter =
+        LocalPlayer.Character
+
+    if securedEggName
+        and securedEggName ~= ""
+        and startingCharacter
+    then
+        local startingChildren =
+            startingCharacter:GetChildren()
+
+        for index = 1, #startingChildren do
+            local child =
+                startingChildren[index]
+
+            local matchesEgg =
+                child.Name == securedEggName
+
+            if not matchesEgg then
+                pcall(function()
+                    matchesEgg =
+                        child:GetAttribute("Egg")
+                            == securedEggName
+                end)
+            end
+
+            if matchesEgg then
+                secureBaseline[child] = true
+            end
+        end
+    end
+
+    local function securedEggAppeared()
+        if not securedEggName
+            or securedEggName == ""
+        then
+            return false
+        end
+
+        local character =
+            LocalPlayer.Character
+
+        if character then
+            local children =
+                character:GetChildren()
+
+            for index = 1, #children do
+                local child =
+                    children[index]
+
+                if not secureBaseline[child] then
+                    local matchesEgg =
+                        child.Name == securedEggName
+
+                    if not matchesEgg then
+                        pcall(function()
+                            matchesEgg =
+                                child:GetAttribute("Egg")
+                                    == securedEggName
+                        end)
+                    end
+
+                    if matchesEgg then
+                        return true
+                    end
+                end
+            end
+        end
+
+        -- Keep the game's explicit deposit event as a fallback in case
+        -- Character replication arrives a frame later.
+        return
+            Session.LastEggPickupStatus
+                == "Deposited"
+            and Session.LastEggPickupStatusAt
+                >= secureWatchStartedAt
+    end
+
+    Session.FarmDebugStage = "return:get-plot"
+
+    local plot, baseplate, plotError =
+        getOwnPlot()
+
+    if not plot then
+        return false, plotError
+    end
+
+    -- Expensive plot scan: do it ONCE for this return trip.
+    -- The same cached parts are reused for route selection and walking.
+    Session.FarmDebugStage = "return:scan-fence"
+
+    local fenceParts = findFenceParts(plot)
+
+    local outsidePoint, insidePoint, fencePart =
+        getFenceBoundaryRoute(
+            plot,
+            baseplate,
+            root.Position,
+            fenceParts
+        )
+
+    if not outsidePoint or not insidePoint then
+        return false,
+            "Could not calculate the plot boundary."
+    end
+
+    local originalStates = {}
+
+    -- Fly with noclip only as far as OUTSIDE the fence / plot boundary.
+    -- Keep enforcing it every physics step because the game may restore
+    -- character collision while we are moving.
+    Session.FarmDebugStage = "return:character-noclip-on"
+    setCharacterNoclip(true, originalStates)
+
+    local flyingNoclipConnection =
+        RunService.Stepped:Connect(function()
+            if not root.Parent
+                or humanoid.Health <= 0
+            then
+                return
+            end
+
+            setCharacterNoclip(
+                true,
+                originalStates
+            )
+        end)
+
+    Session.FarmDebugStage = "return:fly"
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.Name = "ScoopHubTrialReturnFly"
+    bodyVelocity.MaxForce = Vector3.new(
+        math.huge,
+        math.huge,
+        math.huge
+    )
+    bodyVelocity.P = 12500
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = root
+
+    local startedAt = os.clock()
+    local initialDistance =
+        (outsidePoint - root.Position).Magnitude
+
+    local speed =
+        math.clamp(
+            tonumber(Session.ReturnFlySpeed)
+                or 60,
+            1,
+            500
+        )
+
+    local timeout =
+        math.max(
+            8,
+            initialDistance / speed * 4 + 5
+        )
+
+    local reachedOutside = false
+
+    local securedDuringReturn = false
+
+    while not Session.Closed
+        and Session.AutoFarmEnabled
+        and humanoid.Parent
+        and root.Parent
+        and humanoid.Health > 0
+    do
+        if securedEggAppeared() then
+            securedDuringReturn = true
+            break
+        end
+
+        local delta =
+            outsidePoint - root.Position
+
+        local distance = delta.Magnitude
+
+        if distance <= 2.5 then
+            reachedOutside = true
+            break
+        end
+
+        local travelSpeed =
+            math.min(
+                speed,
+                math.max(12, distance * 3)
+            )
+
+        bodyVelocity.Velocity =
+            delta.Unit * travelSpeed
+
+        if os.clock() - startedAt > timeout then
+            break
+        end
+
+        RunService.Heartbeat:Wait()
+    end
+
+    -- Fly ends OUTSIDE the fence.
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity:Destroy()
+    root.AssemblyLinearVelocity =
+        Vector3.new(0, 0, 0)
+
+    if flyingNoclipConnection then
+        flyingNoclipConnection:Disconnect()
+        flyingNoclipConnection = nil
+    end
+
+    -- Flying phase is finished: restore the player's normal collision.
+    Session.FarmDebugStage = "return:character-noclip-off"
+    setCharacterNoclip(
+        false,
+        originalStates
+    )
+
+    if securedDuringReturn
+        or securedEggAppeared()
+    then
+        humanoid:MoveTo(root.Position)
+        root.AssemblyLinearVelocity =
+            Vector3.new(0, 0, 0)
+
+        return true, "Egg secured."
+    end
+
+    if not reachedOutside then
+        return false,
+            "Fly-back timed out before reaching the outside of your plot."
+    end
+
+    task.wait(0.15)
+
+    if securedEggAppeared() then
+        humanoid:MoveTo(root.Position)
+        root.AssemblyLinearVelocity =
+            Vector3.new(0, 0, 0)
+
+        return true, "Egg secured."
+    end
+
+    -- Walking phase:
+    -- The PLAYER is no longer noclip.
+    -- Only the plot's Fence/Fences parts temporarily lose collision,
+    -- so the character can walk through the fence and onto the Baseplate.
+    Session.FarmDebugStage = "return:prepare-walk"
+
+    local fenceStates = {}
+
+    -- Apply once immediately using the cached list.
+    Session.FarmDebugStage = "return:fence-noclip-on"
+
+    setFencePartsNoclip(
+        fenceParts,
+        true,
+        fenceStates
+    )
+
+    -- Some games may restore collision while the player is moving.
+    -- Refresh only the already-cached fence parts at a low frequency
+    -- instead of rescanning the entire plot every physics frame.
+    local fenceRefreshActive = true
+
+    task.spawn(function()
+        while fenceRefreshActive
+            and not Session.Closed
+            and Session.AutoFarmEnabled
+            and humanoid.Parent
+            and root.Parent
+            and humanoid.Health > 0
+        do
+            setFencePartsNoclip(
+                fenceParts,
+                true,
+                fenceStates
+            )
+
+            task.wait(0.20)
+        end
+    end)
+
+    Session.FarmDebugStage = "return:walk"
+
+    local walked, walkResult =
+        walkPathTo(
+            humanoid,
+            root,
+            insidePoint,
+            securedEggAppeared
+        )
+
+    fenceRefreshActive = false
+
+    -- Always restore the fence after the walking attempt.
+    Session.FarmDebugStage = "return:restore-fence"
+
+    setFencePartsNoclip(
+        fenceParts,
+        false,
+        fenceStates
+    )
+
+    if walkResult == "secured"
+        or securedEggAppeared()
+    then
+        humanoid:MoveTo(root.Position)
+        root.AssemblyLinearVelocity =
+            Vector3.new(0, 0, 0)
+
+        return true, "Egg secured."
+    end
+
+    if walked then
+        root.AssemblyLinearVelocity =
+            Vector3.new(0, 0, 0)
+
+        -- The player reached the deposit area. Instead of a fixed delay
+        -- after returning, wait only until the secured egg actually appears.
+        -- The loop exits immediately on confirmation.
+        if securedEggName
+            and securedEggName ~= ""
+        then
+            local secureDeadline =
+                os.clock() + 0.75
+
+            while os.clock() < secureDeadline
+                and not Session.Closed
+                and Session.AutoFarmEnabled
+            do
+                if securedEggAppeared() then
+                    humanoid:MoveTo(root.Position)
+                    root.AssemblyLinearVelocity =
+                        Vector3.new(0, 0, 0)
+
+                    return true, "Egg secured."
+                end
+
+                task.wait(0.03)
+            end
+        end
+
+        return true,
+            fencePart
+            and (
+                "Flew with player noclip, stopped outside the fence, then walked normally while only the fence was noclip."
+            )
+            or (
+                "Flew with player noclip, stopped outside the plot boundary, then walked normally to the Baseplate."
+            )
+    end
+
+    return false,
+        "Stopped outside the plot, but the walking path to the Baseplate failed."
+end
+
+local function getSelectedRecord()
+    if not hasSelectedEggs() then
+        return nil, nil,
+            "Select at least one egg first."
+    end
+
+    local record, position =
+        findNearestSelectedRecord()
+
+    if not record then
+        return nil, nil,
+            "No selected egg is currently available."
+    end
+
+    return record, position
+end
+
+local function testPromptPickup()
+    local record, _, errorText =
+        getSelectedRecord()
+
+    if not record then
+        notify("Egg Pickup Trial", errorText)
+        return
+    end
+
+    local eggName = record:GetAttribute("Egg")
+    local beforeHeldCount =
+        countHeldEgg(eggName)
+
+    local maxAttempts =
+        math.clamp(
+            math.floor(
+                tonumber(Session.PickupMaxAttempts)
+                    or 3
+            ),
+            1,
+            5
+        )
+
+    local finalResult =
+        "Pickup was not confirmed."
+
+    for attempt = 1, maxAttempts do
+        if not record.Parent then
+            finalResult =
+                "The original egg record disappeared before Basket confirmed it."
+            break
+        end
+
+        -- Reposition beside the SAME unique ActiveEgg record every attempt.
+        local moved, moveText =
+            moveNextToPrompt(record)
+
+        if not moved then
+            finalResult = moveText
+            break
+        end
+
+        local _, prompt =
+            findRenderedEgg(record)
+
+        logRecord(record, prompt)
+
+        if not prompt then
+            finalResult =
+                "No ProximityPrompt found on the matching rendered egg."
+            break
+        end
+
+        if type(fireproximityprompt)
+            ~= "function"
+        then
+            finalResult =
+                "Your executor does not provide fireproximityprompt()."
+            break
+        end
+
+        -- Small settle time after teleport.
+        task.wait(0.30)
+
+        Session.FarmDebugStage = "farm:reset-pickup"
+        resetPickupStatus()
+
+        local requestStartedAt = os.clock()
+
+        rememberEggPickupWebhookContext(
+            record
+        )
+
+        local ok, reason = pcall(function()
+            fireproximityprompt(prompt)
+        end)
+
+        if ok then
+            Session.FarmDebugStage = "farm:wait-held"
+
+            local success, result =
+                waitForHeldEgg(
+                    eggName,
+                    beforeHeldCount,
+                    requestStartedAt
+                )
+
+            if success then
+                local returned, returnResult =
+                    returnToOwnPlot()
+
+                notify(
+                    "Prompt Test: SUCCESS",
+                    "Picked up on attempt "
+                        .. tostring(attempt)
+                        .. "/"
+                        .. tostring(maxAttempts)
+                        .. "\n"
+                        .. result
+                        .. "\n"
+                        .. (
+                            returned
+                            and returnResult
+                            or (
+                                "Return failed: "
+                                .. tostring(returnResult)
+                            )
+                        ),
+                    6
+                )
+
+                return
+            end
+
+            finalResult = result
+
+            if pickupShouldStopRetrying() then
+                break
+            end
+        else
+            finalResult =
+                "fireproximityprompt failed: "
+                .. tostring(reason)
+        end
+
+
+        if attempt < maxAttempts then
+            notify(
+                "Prompt Retry",
+                "Attempt "
+                    .. tostring(attempt)
+                    .. " failed. Trying the same egg again...",
+                2
+            )
+
+            task.wait(
+                tonumber(Session.PickupRetryDelay)
+                    or 0.45
+            )
+        end
+    end
+
+    notify(
+        "Prompt Test: FAILED",
+        "Tried "
+            .. tostring(maxAttempts)
+            .. " time(s).\n"
+            .. tostring(finalResult),
+        6
+    )
+end
+
+local function testDirectRemote()
+    local record, _, errorText =
+        getSelectedRecord()
+
+    if not record then
+        notify("Egg Pickup Trial", errorText)
+        return
+    end
+
+    local eggName = record:GetAttribute("Egg")
+    local beforeHeldCount =
+        countHeldEgg(eggName)
+
+    local maxAttempts =
+        math.clamp(
+            math.floor(
+                tonumber(Session.PickupMaxAttempts)
+                    or 3
+            ),
+            1,
+            5
+        )
+
+    local finalResult =
+        "Pickup was not confirmed."
+
+    for attempt = 1, maxAttempts do
+        if not record.Parent then
+            finalResult =
+                "The original egg record disappeared before Basket confirmed it."
+            break
+        end
+
+        -- Re-match and reposition beside the SAME unique ActiveEgg record.
+        local moved, moveText =
+            moveNextToPrompt(record)
+
+        if not moved then
+            finalResult = moveText
+            break
+        end
+
+        local _, prompt =
+            findRenderedEgg(record)
+
+        logRecord(record, prompt)
+
+        -- Give movement replication a moment before firing the remote.
+        task.wait(0.35)
+
+        resetPickupStatus()
+        local requestStartedAt = os.clock()
+
+        Session.FarmDebugStage = "farm:fire-remote"
+
+        rememberEggPickupWebhookContext(
+            record
+        )
+
+        local ok, reason = pcall(function()
+            EggPickup:FireServer(record.Name)
+        end)
+
+        if ok then
+            local success, result =
+                waitForHeldEgg(
+                    eggName,
+                    beforeHeldCount,
+                    requestStartedAt
+                )
+
+            if success then
+                local returned, returnResult =
+                    returnToOwnPlot()
+
+                notify(
+                    "Remote Test: SUCCESS",
+                    "Picked up on attempt "
+                        .. tostring(attempt)
+                        .. "/"
+                        .. tostring(maxAttempts)
+                        .. "\nID: "
+                        .. tostring(record.Name)
+                        .. "\n"
+                        .. result
+                        .. "\n"
+                        .. (
+                            returned
+                            and returnResult
+                            or (
+                                "Return failed: "
+                                .. tostring(returnResult)
+                            )
+                        ),
+                    6
+                )
+
+                return
+            end
+
+            finalResult = result
+
+            if pickupShouldStopRetrying() then
+                break
+            end
+        else
+            finalResult =
+                "FireServer failed: "
+                .. tostring(reason)
+        end
+
+
+        if attempt < maxAttempts then
+            notify(
+                "Remote Retry",
+                "Attempt "
+                    .. tostring(attempt)
+                    .. " failed. Trying the same egg again...",
+                2
+            )
+
+            task.wait(
+                tonumber(Session.PickupRetryDelay)
+                    or 0.45
+            )
+        end
+    end
+
+    notify(
+        "Remote Test: FAILED",
+        "ID: "
+            .. tostring(record.Name)
+            .. "\nTried "
+            .. tostring(maxAttempts)
+            .. " time(s).\n"
+            .. tostring(finalResult),
+        6
+    )
+end
+
+local function sleepWhileEnabled(seconds, runId)
+    local deadline = os.clock() + seconds
+
+    while os.clock() < deadline do
+        if Session.Closed
+            or not Session.AutoFarmEnabled
+            or Session.FarmRunId ~= runId
+        then
+            return false
+        end
+
+        task.wait(0.05)
+    end
+
+    return true
+end
+
+local function autoFarmOneEgg(runId)
+    Session.FarmDebugStage = "farm:start"
+
+    if Session.Closed
+        or not Session.AutoFarmEnabled
+        or Session.FarmRunId ~= runId
+    then
+        return false, "Stopped"
+    end
+
+    Session.FarmDebugStage = "farm:check-selected"
+
+    if not hasSelectedEggs() then
+        return false, "No egg selected"
+    end
+
+    Session.FarmDebugStage = "farm:check-basket"
+
+    -- If an egg is still being carried, return first so the plot can deposit it.
+    if #Basket:GetChildren() > 0 then
+        Session.FarmDebugStage = "farm:return-carried"
+
+        local carriedEggName = nil
+        local carriedChildren =
+            Basket:GetChildren()
+
+        for index = 1, #carriedChildren do
+            local value =
+                carriedChildren[index]:
+                    GetAttribute("Egg")
+
+            if type(value) == "string"
+                and value ~= ""
+            then
+                carriedEggName = value
+                break
+            end
+        end
+
+        local returned =
+            returnToOwnPlot(
+                carriedEggName
+            )
+
+        if not returned then
+            return false, "Could not return carried egg to plot"
+        end
+    end
+
+    Session.FarmDebugStage = "farm:find-record"
+
+    local record =
+        findNearestSelectedRecord()
+
+    if not record then
+        return false,
+            "Waiting for selected eggs (rarest first): "
+            .. getSelectedEggText()
+    end
+
+    Session.FarmDebugStage = "farm:read-record"
+
+    local eggName =
+        record:GetAttribute("Egg")
+
+    Session.FarmDebugStage = "farm:count-held"
+
+    local beforeHeldCount =
+        countHeldEgg(eggName)
+
+    local maxAttempts =
+        math.clamp(
+            math.floor(
+                tonumber(Session.PickupMaxAttempts)
+                    or 3
+            ),
+            1,
+            5
+        )
+
+    local lastResult =
+        "Pickup was not confirmed."
+
+    for attempt = 1, maxAttempts do
+        if Session.Closed
+            or not Session.AutoFarmEnabled
+            or Session.FarmRunId ~= runId
+        then
+            return false, "Stopped"
+        end
+
+        if not record.Parent then
+            return false,
+                "Egg record disappeared"
+        end
+
+        -- Teleport directly beside the exact rendered egg.
+        Session.FarmDebugStage = "farm:move-to-egg"
+
+        local moved, moveResult =
+            moveNextToPrompt(record)
+
+        if not moved then
+            return false, moveResult
+        end
+
+        -- Short replication settle time before pickup.
+        Session.FarmDebugStage = "farm:pre-pickup-wait"
+
+        if not sleepWhileEnabled(0.20, runId) then
+            return false, "Stopped"
+        end
+
+        resetPickupStatus()
+        local requestStartedAt = os.clock()
+
+        rememberEggPickupWebhookContext(
+            record
+        )
+
+        local ok, reason = pcall(function()
+            EggPickup:FireServer(record.Name)
+        end)
+
+        if ok then
+            local success, result =
+                waitForHeldEgg(
+                    eggName,
+                    beforeHeldCount,
+                    requestStartedAt
+                )
+
+            if success then
+                -- Confirmed held: now return to plot.
+                Session.FarmDebugStage = "farm:return-after-pickup"
+
+                local returned, returnResult =
+                    returnToOwnPlot(
+                        eggName
+                    )
+
+                if not returned then
+                    return false, returnResult
+                end
+
+                return true,
+                    "Picked up "
+                    .. tostring(eggName)
+                    .. " on attempt "
+                    .. tostring(attempt)
+            end
+
+            lastResult = result
+
+            if pickupShouldStopRetrying() then
+                -- BasketFull means something is already being held.
+                -- Return to plot instead of spamming pickup.
+                local carriedEggName = nil
+                local carriedChildren =
+                    Basket:GetChildren()
+
+                for index = 1, #carriedChildren do
+                    local value =
+                        carriedChildren[index]:
+                            GetAttribute("Egg")
+
+                    if type(value) == "string"
+                        and value ~= ""
+                    then
+                        carriedEggName = value
+                        break
+                    end
+                end
+
+                returnToOwnPlot(
+                    carriedEggName
+                )
+
+                return false, "Basket was full"
+            end
+        else
+            lastResult =
+                "FireServer failed: "
+                .. tostring(reason)
+        end
+
+        if attempt < maxAttempts then
+            if not sleepWhileEnabled(
+                tonumber(Session.PickupRetryDelay)
+                    or 0.45,
+                runId
+            ) then
+                return false, "Stopped"
+            end
+        end
+    end
+
+    return false, lastResult
+end
+
+function Session:StartAutoFarm()
+    if self.Closed or self.AutoFarmEnabled then
+        return
+    end
+
+    self.AutoFarmEnabled = true
+    self.FarmRunId = self.FarmRunId + 1
+    scheduleAutoSave()
+
+    local runId = self.FarmRunId
+
+    task.spawn(function()
+        while not self.Closed
+            and self.AutoFarmEnabled
+            and self.FarmRunId == runId
+        do
+            -- Obfuscator-safe: avoid pcall(functionValue, arg1, ...)
+            -- because some virtualizers/obfuscators lose forwarded arguments.
+            local ok, result =
+                pcall(function()
+                    return autoFarmOneEgg(runId)
+                end)
+
+            if not ok then
+            end
+
+            if result == true then
+                task.wait()
+            elseif not sleepWhileEnabled(
+                0.35,
+                runId
+            ) then
+                break
+            end
+        end
+    end)
+end
+
+function Session:StopAutoFarm()
+    self.AutoFarmEnabled = false
+    self.FarmRunId = self.FarmRunId + 1
+    scheduleAutoSave()
+end
+
+table.insert(
+    Session.Connections,
+    EggPickup.OnClientEvent:Connect(function(status)
+        Session.LastEggPickupStatus =
+            tostring(status or "")
+        Session.LastEggPickupStatusAt =
+            os.clock()
+
+
+        if Session.LastEggPickupStatus
+            == "Deposited"
+        then
+            -- Stage 2 / final confirmation:
+            -- the game itself says the carried egg was
+            -- deposited at the player's plot.
+            task.defer(function()
+                if Session.Closed then
+                    return
+                end
+
+                flushDepositedEggWebhooks()
+            end)
+        end
+    end)
+)
+
+function Session:RefreshEggs(force)
+    if self.Closed then
+        return
+    end
+
+    -- Keep every known egg type selectable so a chosen target
+    -- remains selected even when that egg temporarily despawns.
+    local names = FARM_EGG_OPTIONS
+    local signature =
+        table.concat(names, "|")
+
+    if not force
+        and signature == self.LastSignature
+    then
+        self:UpdateEggESP()
+        return
+    end
+
+    self.LastSignature = signature
+
+    if self.Dropdown then
+        self.Dropdown:SetOptions(names, true)
+        self.Dropdown:Set(
+            self.SelectedEggOrder,
+            false
+        )
+    end
+
+    if self.ESPDropdown then
+        self.ESPDropdown:SetOptions(names, true)
+        self.ESPDropdown:Set(
+            self.ESPSelectedEggOrder,
+            false
+        )
+    end
+
+    self:UpdateEggESP()
+end
+
+
+local function getShopCategoryItems(category)
+    local names = {}
+
+    local categoryData =
+        ShopData.Categories
+        and ShopData.Categories[category]
+        or {}
+
+    for itemName in pairs(categoryData) do
+        table.insert(names, itemName)
+    end
+
+    table.sort(names, function(a, b)
+        local dataA = categoryData[a] or {}
+        local dataB = categoryData[b] or {}
+
+        local rarityA =
+            RARITY_ORDER[
+                dataA.Rarity
+                or "Common"
+            ] or 0
+
+        local rarityB =
+            RARITY_ORDER[
+                dataB.Rarity
+                or "Common"
+            ] or 0
+
+        if rarityA ~= rarityB then
+            return rarityA < rarityB
+        end
+
+        local priceA =
+            tonumber(dataA.Price) or 0
+
+        local priceB =
+            tonumber(dataB.Price) or 0
+
+        if priceA ~= priceB then
+            return priceA < priceB
+        end
+
+        return a < b
+    end)
+
+    return names
+end
+
+local function setShopSelection(
+    selectedTable,
+    orderTable,
+    values
+)
+    clearTableCompat(selectedTable)
+    clearTableCompat(orderTable)
+
+    for _, itemName in ipairs(
+        values or {}
+    ) do
+        itemName = tostring(itemName)
+
+        if itemName ~= "" then
+            selectedTable[itemName] = true
+
+            table.insert(
+                orderTable,
+                itemName
+            )
+        end
+    end
+end
+
+local function fireShopAutobuy(
+    category,
+    itemName,
+    enabled
+)
+    local ok, reason =
+        pcall(function()
+            Autobuy:FireServer(
+                category,
+                itemName,
+                enabled == true
+            )
+        end)
+
+    if not ok then
+    end
+
+    return ok
+end
+
+local function applyShopCategoryAutoBuy(
+    category,
+    selectedTable,
+    enabled
+)
+    local categoryData =
+        ShopData.Categories
+        and ShopData.Categories[category]
+        or {}
+
+    -- Selected items follow the category toggle.
+    -- Non-selected items are disabled so server Auto Buy matches the dropdown.
+    for itemName in pairs(categoryData) do
+        local shouldEnable =
+            enabled == true
+            and selectedTable[itemName]
+                == true
+
+        fireShopAutobuy(
+            category,
+            itemName,
+            shouldEnable
+        )
+    end
+end
+
+local function updateGearAutoBuy()
+    if not Session.GearAutoBuyEnabled then
+        return
+    end
+
+    applyShopCategoryAutoBuy(
+        "Gears",
+        Session.SelectedGears,
+        true
+    )
+end
+
+local function updateFoodAutoBuy()
+    if not Session.FoodAutoBuyEnabled then
+        return
+    end
+
+    applyShopCategoryAutoBuy(
+        "Food",
+        Session.SelectedFood,
+        true
+    )
+end
+
+
+-- =========================================================
+-- AUTO HATCH
+-- =========================================================
+local function getOwnHatchEggFolder()
+    local plot = nil
+
+    local ok = pcall(function()
+        plot = General:GetPlot(LocalPlayer)
+    end)
+
+    if not ok or not plot then
+        return nil
+    end
+
+    return plot:FindFirstChild("Eggs")
+end
+
+local function isTutorialLockedHatchEgg(model)
+    if LocalPlayer:GetAttribute(
+        "TutorialHatchLocked"
+    ) ~= true
+    then
+        return false
+    end
+
+    local lockedKey =
+        LocalPlayer:GetAttribute(
+            "TutorialLockedEggKey"
+        )
+
+    return lockedKey == nil
+        or lockedKey
+            == model:GetAttribute("EggKey")
+end
+
+local function isHatchEggReady(
+    model,
+    eggFolder
+)
+    if not model
+        or model.Parent ~= eggFolder
+        or not model:IsA("Model")
+        or not Session.HatchSelectedEggs[
+            model.Name
+        ]
+        or not model.PrimaryPart
+    then
+        return false
+    end
+
+    local eggKey =
+        model:GetAttribute("EggKey")
+
+    if type(eggKey) ~= "string"
+        or eggKey == ""
+    then
+        return false
+    end
+
+    if model:HasTag("Hatching") then
+        return false
+    end
+
+    if isTutorialLockedHatchEgg(model) then
+        return false
+    end
+
+    local dataFolder =
+        model:FindFirstChild("EggData")
+
+    if not dataFolder then
+        return false
+    end
+
+    local placeTime =
+        dataFolder:FindFirstChild(
+            "PlaceTime"
+        )
+
+    local weight =
+        dataFolder:FindFirstChild(
+            "Weight"
+        )
+
+    if not placeTime
+        or tonumber(placeTime.Value) == nil
+        or placeTime.Value <= 0
+    then
+        return false
+    end
+
+    local config =
+        EggData[model.Name]
+
+    if type(config) ~= "table"
+        or config.GrowthTime == nil
+    then
+        return false
+    end
+
+    local weightValue = 1
+
+    if weight
+        and tonumber(weight.Value)
+    then
+        weightValue =
+            tonumber(weight.Value)
+    end
+
+    local okRequired, requiredResult =
+        pcall(function()
+            return GeneralData.GrowthTimeFor(
+                config.GrowthTime,
+                weightValue
+            )
+        end)
+
+    if not okRequired
+        or tonumber(requiredResult) == nil
+    then
+        return false
+    end
+
+    local elapsed = 0
+
+    if model:GetAttribute("FlatGrow")
+        == true
+    then
+        elapsed =
+            Workspace:GetServerTimeNow()
+            - placeTime.Value
+    else
+        local okElapsed, elapsedResult =
+            pcall(function()
+                return DayNight.GrowthElapsed(
+                    placeTime.Value
+                )
+            end)
+
+        if not okElapsed
+            or tonumber(elapsedResult)
+                == nil
+        then
+            return false
+        end
+
+        elapsed =
+            tonumber(elapsedResult)
+    end
+
+    return elapsed
+        >= tonumber(requiredResult)
+end
+
+local function requestHatch(model)
+    if not model
+        or not model.Parent
+    then
+        return false
+    end
+
+    local eggKey =
+        model:GetAttribute("EggKey")
+
+    if type(eggKey) ~= "string"
+        or eggKey == ""
+    then
+        return false
+    end
+
+    local last =
+        Session.HatchLastRequest[
+            eggKey
+        ]
+        or 0
+
+    if os.clock() - last < 1.10 then
+        return false
+    end
+
+    Session.HatchLastRequest[
+        eggKey
+    ] = os.clock()
+
+    local pendingKey =
+        tostring(eggKey)
+
+    -- Snapshot the pet inventory BEFORE asking the server
+    -- to hatch. The webhook will only send after a new
+    -- PetKey not present in this snapshot is confirmed.
+    Session.WebhookPendingHatches[
+        pendingKey
+    ] = {
+        EggName = model.Name,
+        At = os.clock(),
+        KnownPetKeys =
+            snapshotWebhookOwnedPetKeys(),
+    }
+
+    local ok =
+        pcall(function()
+            HatchRemote:FireServer({
+                EggKey = eggKey,
+            })
+        end)
+
+    if not ok then
+        Session.WebhookPendingHatches[
+            pendingKey
+        ] = nil
+    end
+
+    return ok
+end
+
+local function hatchSelectedEggs()
+    local eggFolder =
+        getOwnHatchEggFolder()
+
+    if not eggFolder then
+        return 0
+    end
+
+    local children =
+        eggFolder:GetChildren()
+
+    local requested = 0
+
+    for index = 1, #children do
+        if Session.Closed
+            or not Session.AutoHatchEnabled
+        then
+            break
+        end
+
+        local model =
+            children[index]
+
+        if isHatchEggReady(
+            model,
+            eggFolder
+        )
+            and requestHatch(model)
+        then
+            requested =
+                requested + 1
+
+            task.wait(0.12)
+        end
+    end
+
+    return requested
+end
+
+function Session:StartAutoHatch()
+    if self.Closed
+        or self.AutoHatchEnabled
+    then
+        return
+    end
+
+    self.AutoHatchEnabled = true
+    self.HatchRunId =
+        self.HatchRunId + 1
+
+    scheduleAutoSave()
+
+    local runId =
+        self.HatchRunId
+
+    task.spawn(function()
+        while not self.Closed
+            and self.AutoHatchEnabled
+            and self.HatchRunId == runId
+        do
+            pcall(function()
+                hatchSelectedEggs()
+            end)
+
+            task.wait(0.45)
+        end
+    end)
+end
+
+function Session:StopAutoHatch()
+    self.AutoHatchEnabled = false
+    self.HatchRunId =
+        self.HatchRunId + 1
+
+    scheduleAutoSave()
+end
+
+-- =========================================================
+-- AUTO EQUIP BEST PET
+-- Uses the game's real PlacePet/PickupPet flow.
+-- =========================================================
+local function getAutoEquipPetKey(object)
+    if not object
+        or not object.Parent
+        or not object:IsA("Tool")
+        or not object:HasTag("Pet")
+    then
+        return nil
+    end
+
+    local key =
+        object:GetAttribute("PetKey")
+
+    if key == nil then
+        return nil
+    end
+
+    key = tostring(key)
+
+    if key == "" then
+        return nil
+    end
+
+    return key
+end
+
+local function registerAutoEquipToolPet(object)
+    local key =
+        getAutoEquipPetKey(object)
+
+    if not key then
+        return false, nil
+    end
+
+    local wasKnown =
+        Session.AutoEquipBestKnownPets[
+            key
+        ] == true
+
+    Session.AutoEquipBestKnownPets[
+        key
+    ] = true
+
+    return not wasKnown, key
+end
+
+local function registerAutoEquipContainer(
+    container
+)
+    if not container then
+        return
+    end
+
+    local children =
+        container:GetChildren()
+
+    for index = 1, #children do
+        registerAutoEquipToolPet(
+            children[index]
+        )
+    end
+end
+
+local function registerPlacedPetsForAutoEquip()
+    local ok, allPets =
+        pcall(function()
+            return PetRenderer.GetAll()
+        end)
+
+    if not ok
+        or type(allPets) ~= "table"
+    then
+        return
+    end
+
+    for _, pet in pairs(allPets) do
+        if type(pet) == "table"
+            and pet.OwnerUserId
+                == LocalPlayer.UserId
+            and pet.PetKey ~= nil
+        then
+            Session.AutoEquipBestKnownPets[
+                tostring(pet.PetKey)
+            ] = true
+        end
+    end
+end
+
+local function scanKnownPetsForAutoEquip()
+    registerPlacedPetsForAutoEquip()
+    registerAutoEquipContainer(Backpack)
+    registerAutoEquipContainer(
+        LocalPlayer.Character
+    )
+end
+
+local function autoEquipPetIncome(tool)
+    if not tool then
+        return 0
+    end
+
+    local petName =
+        tool:GetAttribute("PetName")
+        or tool.Name
+
+    local config =
+        Pets[petName]
+
+    local baseIncome =
+        config
+        and tonumber(config.Income)
+        or 0
+
+    if baseIncome <= 0 then
+        return 0
+    end
+
+    local weight =
+        tonumber(
+            tool:GetAttribute("Weight")
+        )
+        or 1
+
+    local standardWeight =
+        tonumber(PetAging.WeightStandardKG)
+        or 1
+
+    if standardWeight <= 0 then
+        standardWeight = 1
+    end
+
+    local mutationFactor = 1
+
+    local okFactor, result =
+        pcall(function()
+            return Mutations.CombinedFactor(
+                tool:GetAttribute(
+                    "Mutation"
+                ),
+                tool:GetAttribute(
+                    "SpawnMutation"
+                )
+            )
+        end)
+
+    if okFactor
+        and tonumber(result)
+    then
+        mutationFactor =
+            tonumber(result)
+    end
+
+    local income =
+        math.floor(
+            baseIncome
+            * (weight / standardWeight)
+        )
+        * mutationFactor
+
+    return math.floor(income)
+end
+
+local function findPetToolByKey(petKey)
+    local containers = {
+        LocalPlayer.Character,
+        Backpack,
+    }
+
+    for containerIndex = 1, #containers do
+        local container =
+            containers[containerIndex]
+
+        if container then
+            local children =
+                container:GetChildren()
+
+            for index = 1, #children do
+                local child =
+                    children[index]
+
+                if child:IsA("Tool")
+                    and tostring(
+                        child:GetAttribute(
+                            "PetKey"
+                        )
+                    ) == tostring(petKey)
+                then
+                    return child
+                end
+            end
+        end
+    end
+
+    return nil
+end
+
+local function collectOwnedPetsForAutoEquip()
+    local result = {}
+    local included = {}
+
+    local ok, renderedPets =
+        pcall(function()
+            return PetRenderer.GetAll()
+        end)
+
+    if ok
+        and type(renderedPets) == "table"
+    then
+        for _, pet in pairs(renderedPets) do
+            if type(pet) == "table"
+                and pet.OwnerUserId
+                    == LocalPlayer.UserId
+                and pet.Model
+                and pet.Model.Parent
+                and pet.PetKey ~= nil
+            then
+                local key =
+                    tostring(pet.PetKey)
+
+                if not included[key] then
+                    included[key] = true
+
+                    result[
+                        #result + 1
+                    ] = {
+                        Placed = true,
+                        Key = key,
+                        Income =
+                            tonumber(
+                                pet.DisplayIncome
+                            )
+                            or 0,
+                        Position =
+                            pet.Model
+                                :GetPivot()
+                                .Position,
+                    }
+                end
+            end
+        end
+    end
+
+    local containers = {
+        LocalPlayer.Character,
+        Backpack,
+    }
+
+    for containerIndex = 1, #containers do
+        local container =
+            containers[containerIndex]
+
+        if container then
+            local children =
+                container:GetChildren()
+
+            for index = 1, #children do
+                local child =
+                    children[index]
+
+                if child:IsA("Tool")
+                    and child:HasTag("Pet")
+                then
+                    local rawKey =
+                        child:GetAttribute(
+                            "PetKey"
+                        )
+
+                    if rawKey ~= nil then
+                        local key =
+                            tostring(rawKey)
+
+                        if not included[key] then
+                            included[key] = true
+
+                            result[
+                                #result + 1
+                            ] = {
+                                Placed = false,
+                                Key = key,
+                                Income =
+                                    autoEquipPetIncome(
+                                        child
+                                    ),
+                                Tool = child,
+                            }
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    table.sort(
+        result,
+        function(a, b)
+            return
+                (tonumber(a.Income) or 0)
+                > (tonumber(b.Income) or 0)
+        end
+    )
+
+    return result
+end
+
+local function autoEquipPlacementFor(
+    root,
+    slotIndex
+)
+    local row =
+        math.floor(
+            (slotIndex - 1) / 3
+        )
+        * 4
+        + 8
+
+    local column =
+        ((slotIndex - 1) % 3 - 1)
+        * 4
+
+    local position =
+        (
+            root.CFrame
+            * CFrame.new(
+                column,
+                0,
+                -row
+            )
+        ).Position
+
+    local plot, baseplate =
+        getOwnPlot()
+
+    if not plot or not baseplate then
+        return position
+    end
+
+    local localPosition =
+        baseplate.CFrame
+            :PointToObjectSpace(
+                position
+            )
+
+    local maxX =
+        baseplate.Size.X / 2 - 2
+
+    local maxZ =
+        baseplate.Size.Z / 2 - 2
+
+    return baseplate.CFrame
+        :PointToWorldSpace(
+            Vector3.new(
+                math.clamp(
+                    localPosition.X,
+                    -maxX,
+                    maxX
+                ),
+                localPosition.Y,
+                math.clamp(
+                    localPosition.Z,
+                    -maxZ,
+                    maxZ
+                )
+            )
+        )
+end
+
+local function runAutoEquipBest()
+    if Session.Closed
+        or not Session.AutoEquipBestEnabled
+        or Session.AutoEquipBestBusy
+    then
+        return false
+    end
+
+    local character =
+        LocalPlayer.Character
+
+    local humanoid =
+        character
+        and character
+            :FindFirstChildOfClass(
+                "Humanoid"
+            )
+        or nil
+
+    local root =
+        character
+        and character
+            :FindFirstChild(
+                "HumanoidRootPart"
+            )
+        or nil
+
+    if not humanoid
+        or not root
+        or humanoid.Health <= 0
+    then
+        return false
+    end
+
+    Session.AutoEquipBestBusy = true
+
+    local ok, err =
+        pcall(function()
+            local maxPets =
+                tonumber(
+                    LocalPlayer:GetAttribute(
+                        "MaxPets"
+                    )
+                )
+                or 5
+
+            maxPets =
+                math.max(
+                    0,
+                    math.floor(maxPets)
+                )
+
+            local pets =
+                collectOwnedPetsForAutoEquip()
+
+            if #pets == 0
+                or maxPets <= 0
+            then
+                return
+            end
+
+            local selected = {}
+            local selectedKeys = {}
+
+            local takeCount =
+                math.min(
+                    maxPets,
+                    #pets
+                )
+
+            for index = 1, takeCount do
+                selected[index] =
+                    pets[index]
+
+                selectedKeys[
+                    pets[index].Key
+                ] = true
+            end
+
+            local freedPositions = {}
+
+            for index = 1, #pets do
+                local pet = pets[index]
+
+                if pet.Placed
+                    and not selectedKeys[
+                        pet.Key
+                    ]
+                then
+                    if pet.Position then
+                        freedPositions[
+                            #freedPositions + 1
+                        ] = pet.Position
+                    end
+
+                    pcall(function()
+                        PetRenderer.Remove(
+                            LocalPlayer.UserId,
+                            pet.Key
+                        )
+                    end)
+
+                    PickupPet:FireServer(
+                        pet.Key
+                    )
+
+                    task.wait(0.20)
+                end
+            end
+
+            local placed = 0
+
+            for index = 1, #selected do
+                local pet =
+                    selected[index]
+
+                if not pet.Placed then
+                    local tool =
+                        pet.Tool
+
+                    if not tool
+                        or not tool.Parent
+                    then
+                        tool =
+                            findPetToolByKey(
+                                pet.Key
+                            )
+                    end
+
+                    if tool
+                        and tool.Parent
+                    then
+                        humanoid:EquipTool(tool)
+
+                        local deadline =
+                            os.clock() + 2
+
+                        while tool.Parent
+                                ~= character
+                            and os.clock()
+                                < deadline
+                        do
+                            task.wait()
+                        end
+
+                        if tool.Parent
+                            == character
+                        then
+                            local position = nil
+
+                            if #freedPositions > 0 then
+                                position =
+                                    table.remove(
+                                        freedPositions,
+                                        1
+                                    )
+                            else
+                                position =
+                                    autoEquipPlacementFor(
+                                        root,
+                                        index
+                                    )
+                            end
+
+                            PlacePet:FireServer(
+                                pet.Key,
+                                position
+                            )
+
+                            placed =
+                                placed + 1
+
+                            task.wait(0.20)
+                        end
+                    end
+                end
+            end
+
+            if placed > 0
+                and LocalPlayer:GetAttribute(
+                    "IsRiding"
+                ) ~= true
+            then
+                humanoid:UnequipTools()
+            end
+        end)
+
+    Session.AutoEquipBestBusy = false
+    Session.AutoEquipBestLastRunAt =
+        os.clock()
+
+    scanKnownPetsForAutoEquip()
+
+    if not ok then
+    end
+
+    return ok
+end
+
+local function runAutoEquipPendingWorker()
+    if Session.AutoEquipBestWorkerRunning then
+        return
+    end
+
+    Session.AutoEquipBestWorkerRunning = true
+
+    task.spawn(function()
+        while not Session.Closed
+            and Session.AutoEquipBestEnabled
+            and Session.AutoEquipBestPending
+        do
+            local remaining =
+                Session.AutoEquipBestCooldown
+                - (
+                    os.clock()
+                    - Session.AutoEquipBestLastRunAt
+                )
+
+            if remaining > 0 then
+                task.wait(
+                    math.min(
+                        remaining,
+                        0.25
+                    )
+                )
+            elseif Session.AutoEquipBestBusy then
+                task.wait(0.20)
+            else
+                Session.AutoEquipBestPending =
+                    false
+
+                runAutoEquipBest()
+            end
+        end
+
+        Session.AutoEquipBestWorkerRunning =
+            false
+
+        if not Session.Closed
+            and Session.AutoEquipBestEnabled
+            and Session.AutoEquipBestPending
+        then
+            runAutoEquipPendingWorker()
+        end
+    end)
+end
+
+local function requestAutoEquipBest()
+    if Session.Closed
+        or not Session.AutoEquipBestEnabled
+    then
+        return
+    end
+
+    local elapsed =
+        os.clock()
+        - Session.AutoEquipBestLastRunAt
+
+    if not Session.AutoEquipBestBusy
+        and elapsed
+            >= Session.AutoEquipBestCooldown
+        and not Session
+            .AutoEquipBestWorkerRunning
+    then
+        Session.AutoEquipBestPending =
+            false
+
+        runAutoEquipBest()
+        return
+    end
+
+    Session.AutoEquipBestPending = true
+    runAutoEquipPendingWorker()
+end
+
+local function inspectNewBackpackPet(object)
+    if Session.Closed
+        or not Session.AutoEquipBestEnabled
+        or not object
+    then
+        return
+    end
+
+    task.spawn(function()
+        for attempt = 1, 15 do
+            if Session.Closed
+                or not Session
+                    .AutoEquipBestEnabled
+            then
+                return
+            end
+
+            if object.Parent ~= Backpack then
+                return
+            end
+
+            local isNew, key =
+                registerAutoEquipToolPet(
+                    object
+                )
+
+            if key then
+                if isNew then
+                    task.wait(0.35)
+                    requestAutoEquipBest()
+                end
+
+                return
+            end
+
+            task.wait(0.20)
+        end
+    end)
+end
+
+local function inspectCharacterPetForAutoEquip(
+    object
+)
+    if Session.Closed
+        or not Session.AutoEquipBestEnabled
+        or not object
+    then
+        return
+    end
+
+    task.spawn(function()
+        for attempt = 1, 12 do
+            if Session.Closed
+                or not Session
+                    .AutoEquipBestEnabled
+            then
+                return
+            end
+
+            local character =
+                LocalPlayer.Character
+
+            if not character
+                or object.Parent ~= character
+            then
+                return
+            end
+
+            local _, key =
+                registerAutoEquipToolPet(
+                    object
+                )
+
+            if key then
+                return
+            end
+
+            task.wait(0.20)
+        end
+    end)
+end
+
+local function disconnectAutoEquipConnections()
+    for index = 1,
+        #Session.AutoEquipBestConnections
+    do
+        local connection =
+            Session.AutoEquipBestConnections[
+                index
+            ]
+
+        pcall(function()
+            connection:Disconnect()
+        end)
+    end
+
+    clearTableCompat(
+        Session.AutoEquipBestConnections
+    )
+end
+
+local function bindAutoEquipCharacter(character)
+    if not character then
+        return
+    end
+
+    registerAutoEquipContainer(character)
+
+    local connection =
+        character.ChildAdded:Connect(
+            inspectCharacterPetForAutoEquip
+        )
+
+    Session.AutoEquipBestConnections[
+        #Session.AutoEquipBestConnections + 1
+    ] = connection
+end
+
+function Session:StartAutoEquipBest()
+    if self.Closed
+        or self.AutoEquipBestEnabled
+    then
+        return
+    end
+
+    self.AutoEquipBestEnabled = true
+    self.AutoEquipBestPending = false
+
+    scanKnownPetsForAutoEquip()
+
+    local backpackConnection =
+        Backpack.ChildAdded:Connect(
+            inspectNewBackpackPet
+        )
+
+    self.AutoEquipBestConnections[
+        #self.AutoEquipBestConnections + 1
+    ] = backpackConnection
+
+    local characterAddedConnection =
+        LocalPlayer.CharacterAdded:Connect(
+            function(character)
+                if self.AutoEquipBestEnabled
+                    and not self.Closed
+                then
+                    bindAutoEquipCharacter(
+                        character
+                    )
+                end
+            end
+        )
+
+    self.AutoEquipBestConnections[
+        #self.AutoEquipBestConnections + 1
+    ] = characterAddedConnection
+
+    bindAutoEquipCharacter(
+        LocalPlayer.Character
+    )
+
+    scheduleAutoSave()
+    runAutoEquipBest()
+end
+
+function Session:StopAutoEquipBest()
+    self.AutoEquipBestEnabled = false
+    self.AutoEquipBestPending = false
+
+    disconnectAutoEquipConnections()
+    scheduleAutoSave()
+end
+
+function Session:Stop()
+    if self.Closed then
+        return
+    end
+
+    saveConfigNow()
+    self:StopAutoFarm()
+    self:StopAutoHatch()
+    self:StopAutoEquipBest()
+
+    self.ESPEnabled = false
+    self:ClearEggESP()
+
+    self.WalkSpeedEnabled = false
+    self.InfiniteJumpEnabled = false
+    restoreWalkSpeed()
+
+    setLowGraphicsMode(false)
+
+    clearTableCompat(
+        self.WebhookQueue
+    )
+    clearTableCompat(
+        self.WebhookPendingHatches
+    )
+    clearTableCompat(
+        self.WebhookPendingPickup
+    )
+    clearTableCompat(
+        self.WebhookPendingDeposits
+    )
+
+    self.Closed = true
+
+    for index = 1, #self.Connections do
+        local connection = self.Connections[index]
+
+        pcall(function()
+            connection:Disconnect()
+        end)
+    end
+
+    clearTableCompat(self.Connections)
+
+    if Environment.ScoopHubPremiumEggFarmFinal
+        == self
+    then
+        Environment.ScoopHubPremiumEggFarmFinal =
+            nil
+    end
+end
+
+local Window = Library:CreateWindow({
+    GuiName = "ScoopHubPremium",
+    Title = "SCOOPHUB PREMIUM",
+    Version = "V1.5",
+    Subtitle = "By Scoop",
+    Discord = "discord.gg/9czKzA5mVt",
+    Logo = "rbxassetid://97406911955707",
+    OnClose = function()
+        saveConfigNow()
+        Session:Stop()
+    end,
+})
+
+local UserTab = Window:AddTab({
+    Name = "User",
+    Icon = "rbxassetid://17132521951",
+})
+
+local FarmTab = Window:AddTab({
+    Name = "Automation",
+    Icon = "rbxassetid://15332132816",
+    Status = "● AUTO",
+})
+
+local ShopTab = Window:AddTab({
+    Name = "Shop",
+    Icon = "rbxassetid://11385395241",
+    Status = "● AUTO BUY",
+})
+
+_G.ScoopHubPremiumUserPreferences =
+    _G.ScoopHubPremiumUserPreferences
+    or {}
+
+if type(LoadedConfig.UserPreferences) == "table" then
+    local savedPrefs = LoadedConfig.UserPreferences
+
+    _G.ScoopHubPremiumUserPreferences.AutoRejoin =
+        savedPrefs.AutoRejoin == true
+
+    _G.ScoopHubPremiumUserPreferences.Notifications =
+        savedPrefs.Notifications == true
+
+    _G.ScoopHubPremiumUserPreferences.Tooltips =
+        savedPrefs.Tooltips == true
+end
+
+_G.ScoopHubPremiumUserPreferences.LowGraphics =
+    LoadedLowGraphicsEnabled
+
+UserTab:AddUserDashboard({
+    Preferences =
+        _G.ScoopHubPremiumUserPreferences,
+
+    OnLowGraphics = function(value)
+        if Session.Closed
+            or Library.Unloaded
+        then
+            return
+        end
+
+        local enabled =
+            value == true
+
+        setLowGraphicsMode(enabled)
+        scheduleAutoSave()
+
+        Library:SetNotification({
+            Title = "SCOOPHUB PREMIUM",
+            Description = "Low Graphics Mode",
+            Content =
+                enabled
+                and "Low Graphics enabled. Textures, decorative effects, and material patterns were stripped while colors stay visible."
+                or "Low Graphics disabled. Original textures restored.",
+            Delay = 2,
+        })
+    end,
+
+    LocalPlayer = {
+        WalkSpeedValue =
+            tostring(
+                Session.WalkSpeedValue
+                or 16
+            ),
+
+        WalkSpeed =
+            Session.WalkSpeedEnabled
+            == true,
+
+        InfiniteJump =
+            Session.InfiniteJumpEnabled
+            == true,
+
+        OnWalkSpeedValue = function(value)
+            local parsedValue =
+                tonumber(value)
+
+            if not parsedValue
+                or parsedValue ~= parsedValue
+            then
+                return
+            end
+
+            Session.WalkSpeedValue =
+                math.clamp(
+                    parsedValue,
+                    0,
+                    500
+                )
+
+            if Session.WalkSpeedEnabled then
+                local humanoid =
+                    getLocalHumanoid()
+
+                if humanoid then
+                    humanoid.WalkSpeed =
+                        Session.WalkSpeedValue
+                end
+            end
+
+            scheduleAutoSave()
+        end,
+
+        OnWalkSpeed = function(value)
+            local newState =
+                value == true
+
+            if Session.Closed
+                or Library.Unloaded
+            then
+                return
+            end
+
+            if Session.WalkSpeedEnabled
+                == newState
+            then
+                return
+            end
+
+            Session.WalkSpeedEnabled =
+                newState
+
+            if newState then
+                if LocalPlayer.Character then
+                    bindWalkSpeedCharacter(
+                        LocalPlayer.Character
+                    )
+                end
+            else
+                restoreWalkSpeed()
+            end
+
+            scheduleAutoSave()
+
+            Library:SetNotification({
+                Title = "SCOOPHUB PREMIUM",
+                Description = "WalkSpeed",
+                Content =
+                    newState
+                    and "WalkSpeed enabled."
+                    or "WalkSpeed restored.",
+                Delay = 2,
+            })
+        end,
+
+        OnInfiniteJump = function(value)
+            if Session.Closed
+                or Library.Unloaded
+            then
+                return
+            end
+
+            Session.InfiniteJumpEnabled =
+                value == true
+
+            scheduleAutoSave()
+
+            Library:SetNotification({
+                Title = "SCOOPHUB PREMIUM",
+                Description = "Infinite Jump",
+                Content =
+                    Session.InfiniteJumpEnabled
+                    and "Infinite Jump enabled."
+                    or "Infinite Jump disabled.",
+                Delay = 2,
+            })
+        end,
+    },
+})
+
+-- =========================================================
+-- USER DASHBOARD PRIVACY / BUTTON LAYOUT
+-- Isolated inside its own function scope so this large
+-- script does not exceed Lua's local-variable limit.
+-- =========================================================
+;(function()
+    local function findDashboardButton(
+        buttonText
+    )
+        local roots = {}
+
+        pcall(function()
+            roots[#roots + 1] =
+                game:GetService(
+                    "CoreGui"
+                )
+        end)
+
+        local playerGui =
+            LocalPlayer:FindFirstChild(
+                "PlayerGui"
+            )
+
+        if playerGui then
+            roots[#roots + 1] =
+                playerGui
+        end
+
+        pcall(function()
+            if type(gethui)
+                == "function"
+            then
+                local hiddenUi =
+                    gethui()
+
+                if hiddenUi then
+                    roots[#roots + 1] =
+                        hiddenUi
+                end
+            end
+        end)
+
+        for rootIndex = 1, #roots do
+            local root =
+                roots[rootIndex]
+
+            local descendants =
+                root:GetDescendants()
+
+            for index = 1,
+                #descendants
+            do
+                local object =
+                    descendants[index]
+
+                if object:IsA(
+                    "TextButton"
+                )
+                    and object.Text
+                        == buttonText
+                then
+                    return object
+                end
+            end
+        end
+
+        return nil
+    end
+
+    local function findValueLabel(
+        playerCard,
+        yOffset,
+        fallbackText
+    )
+        if not playerCard then
+            return nil
+        end
+
+        local children =
+            playerCard:GetChildren()
+
+        for index = 1, #children do
+            local object =
+                children[index]
+
+            if object:IsA(
+                "TextLabel"
+            )
+                and object.Position.Y.Offset
+                    == yOffset
+                and object.Text
+                    ~= "Username"
+                and object.Text
+                    ~= "User ID"
+                and object.Text
+                    ~= "Display Name"
+            then
+                return object
+            end
+        end
+
+        for index = 1, #children do
+            local object =
+                children[index]
+
+            if object:IsA(
+                "TextLabel"
+            )
+                and object.Text
+                    == tostring(
+                        fallbackText
+                    )
+            then
+                return object
+            end
+        end
+
+        return nil
+    end
+
+    local function applyPatch()
+        local rejoinButton =
+            findDashboardButton(
+                "REJOIN"
+            )
+
+        local serverHopButton =
+            findDashboardButton(
+                "SERVER HOP"
+            )
+
+        if not rejoinButton
+            or not serverHopButton
+            or not rejoinButton.Parent
+            or not serverHopButton.Parent
+        then
+
+            return false
+        end
+
+        local playerCard =
+            rejoinButton.Parent
+
+        local sessionCard =
+            serverHopButton.Parent
+
+        if playerCard
+            == sessionCard
+        then
+            return false
+        end
+
+        local oldPosition =
+            rejoinButton.Position
+
+        local oldSize =
+            rejoinButton.Size
+
+        -- Clone the old REJOIN visual before
+        -- moving the real connected button.
+        local privacyButton =
+            rejoinButton:Clone()
+
+        privacyButton.Name =
+            "ScoopHubPrivacyButton"
+
+        privacyButton.Text =
+            "HIDE INFO"
+
+        privacyButton.Position =
+            oldPosition
+
+        privacyButton.Size =
+            oldSize
+
+        privacyButton.Parent =
+            playerCard
+
+        -- Move the ORIGINAL REJOIN object.
+        -- Its existing library Activated connection
+        -- remains attached.
+        rejoinButton.Parent =
+            sessionCard
+
+        rejoinButton.Position =
+            UDim2.new(
+                0,
+                12,
+                1,
+                -30
+            )
+
+        rejoinButton.Size =
+            UDim2.new(
+                0.5,
+                -18,
+                0,
+                22
+            )
+
+        serverHopButton.Position =
+            UDim2.new(
+                0.5,
+                6,
+                1,
+                -30
+            )
+
+        serverHopButton.Size =
+            UDim2.new(
+                0.5,
+                -18,
+                0,
+                22
+            )
+
+        local usernameLabel =
+            findValueLabel(
+                playerCard,
+                43,
+                LocalPlayer.Name
+            )
+
+        local userIdLabel =
+            findValueLabel(
+                playerCard,
+                73,
+                LocalPlayer.UserId
+            )
+
+        local displayNameLabel =
+            findValueLabel(
+                playerCard,
+                103,
+                LocalPlayer.DisplayName
+            )
+
+        local username =
+            usernameLabel
+            and usernameLabel.Text
+            or tostring(
+                LocalPlayer.Name
+            )
+
+        local userId =
+            userIdLabel
+            and userIdLabel.Text
+            or tostring(
+                LocalPlayer.UserId
+            )
+
+        local displayName =
+            displayNameLabel
+            and displayNameLabel.Text
+            or tostring(
+                LocalPlayer.DisplayName
+            )
+
+        local hidden = false
+
+        local function mask(value)
+            value =
+                tostring(
+                    value or ""
+                )
+
+            return string.rep(
+                "*",
+                math.max(
+                    #value,
+                    3
+                )
+            )
+        end
+
+        local function refresh()
+            if usernameLabel then
+                usernameLabel.Text =
+                    hidden
+                    and mask(username)
+                    or username
+            end
+
+            if userIdLabel then
+                userIdLabel.Text =
+                    hidden
+                    and mask(userId)
+                    or userId
+            end
+
+            if displayNameLabel then
+                displayNameLabel.Text =
+                    hidden
+                    and mask(
+                        displayName
+                    )
+                    or displayName
+            end
+
+            if privacyButton
+                and privacyButton.Parent
+            then
+                privacyButton.Text =
+                    hidden
+                    and "SHOW INFO"
+                    or "HIDE INFO"
+            end
+        end
+
+        privacyButton.Activated:
+            Connect(function()
+                hidden =
+                    not hidden
+
+                refresh()
+            end)
+
+        refresh()
+
+        return true
+    end
+
+    task.defer(function()
+        pcall(applyPatch)
+    end)
+end)()
+
+if _G.ScoopHubPremiumUserPreferences.LowGraphics
+    == true
+then
+    setLowGraphicsMode(true)
+end
+
+local FarmSection = FarmTab:AddSection({
+    Title = "AUTO EGG FARM",
+    Column = "Left",
+})
+
+local ESPSection = FarmTab:AddSection({
+    Title = "EGG ESP",
+    Column = "Right",
+})
+
+Session.Dropdown = FarmSection:AddDropdown({
+    Title = "Grind Egg",
+    Content = "Choose one or more egg types to farm.",
+    Multi = true,
+    Options = FARM_EGG_OPTIONS,
+    Default = Session.SelectedEggOrder,
+    SearchPlaceholder = "Search egg...",
+    Callback = function(values)
+        clearTableCompat(Session.SelectedEggs)
+        clearTableCompat(Session.SelectedEggOrder)
+
+        for _, eggName in ipairs(
+            values or {}
+        ) do
+            eggName = tostring(eggName)
+
+            if eggName ~= "" then
+                Session.SelectedEggs[eggName] =
+                    true
+
+                table.insert(
+                    Session.SelectedEggOrder,
+                    eggName
+                )
+            end
+        end
+
+        Session:UpdateEggESP()
+        scheduleAutoSave()
+    end,
+})
+
+FarmSection:AddInput({
+    Title = "Fly Speed",
+    Placeholder = "Enter fly speed...",
+    Default = tostring(Session.ReturnFlySpeed),
+    Callback = function(value)
+        local speed = tonumber(value)
+
+        if speed and speed == speed then
+            Session.ReturnFlySpeed =
+                math.clamp(speed, 1, 500)
+            scheduleAutoSave()
+        end
+    end,
+})
+
+Session.ESPDropdown = ESPSection:AddDropdown({
+    Title = "ESP Eggs",
+    Content = "Choose one or more egg types to highlight.",
+    Multi = true,
+    Options = FARM_EGG_OPTIONS,
+    Default = Session.ESPSelectedEggOrder,
+    SearchPlaceholder = "Search egg...",
+    Callback = function(values)
+        clearTableCompat(Session.ESPSelectedEggs)
+        clearTableCompat(Session.ESPSelectedEggOrder)
+
+        for _, eggName in ipairs(
+            values or {}
+        ) do
+            eggName = tostring(eggName)
+
+            if eggName ~= "" then
+                Session.ESPSelectedEggs[eggName] =
+                    true
+
+                table.insert(
+                    Session.ESPSelectedEggOrder,
+                    eggName
+                )
+            end
+        end
+
+        Session:UpdateEggESP()
+        scheduleAutoSave()
+    end,
+})
+
+ESPSection:AddToggle({
+    Title = "Egg ESP",
+    Content = "Highlight the egg types selected above.",
+    Default = Session.ESPEnabled,
+    Callback = function(value)
+        Session.ESPEnabled =
+            value == true
+
+        Session:UpdateEggESP()
+        scheduleAutoSave()
+    end,
+})
+
+local AutoFarmToggle
+
+AutoFarmToggle = FarmSection:AddToggle({
+    Title = "Auto Egg Farm",
+    Default = LoadedAutoFarmEnabled,
+    Callback = function(value)
+        local enabled = value == true
+
+        if Session.Closed then
+            return false
+        end
+
+        if enabled then
+            if not hasSelectedEggs() then
+                notify(
+                    "Egg Farm",
+                    "Choose at least one egg first.",
+                    2
+                )
+
+                if AutoFarmToggle then
+                    task.defer(function()
+                        AutoFarmToggle:Set(false)
+                    end)
+                end
+
+                return false
+            end
+
+            Session:StartAutoFarm()
+        else
+            Session:StopAutoFarm()
+        end
+    end,
+})
+
+
+
+local PetAutomationSection = FarmTab:AddSection({
+    Title = "PET AUTOMATION",
+    Column = "Left",
+})
+
+local HatchSection = FarmTab:AddSection({
+    Title = "AUTO HATCH",
+    Column = "Right",
+})
+
+PetAutomationSection:AddToggle({
+    Title = "Auto Equip Best Pet",
+    Default = LoadedAutoEquipBestEnabled,
+    Callback = function(value)
+        if value == true then
+            Session:StartAutoEquipBest()
+        else
+            Session:StopAutoEquipBest()
+        end
+    end,
+})
+
+HatchSection:AddDropdown({
+    Title = "Hatch Eggs",
+    Content =
+        "Choose one or more egg types to hatch.",
+    Multi = true,
+    Options = HATCH_EGG_OPTIONS,
+    Default =
+        Session.HatchSelectedEggOrder,
+    SearchPlaceholder =
+        "Search egg...",
+    EmptyText =
+        "No eggs selected",
+
+    Callback = function(values)
+        clearTableCompat(
+            Session.HatchSelectedEggs
+        )
+
+        clearTableCompat(
+            Session.HatchSelectedEggOrder
+        )
+
+        for index = 1, #(values or {}) do
+            local eggName =
+                tostring(
+                    values[index] or ""
+                )
+
+            if eggName ~= ""
+                and EggData[eggName]
+            then
+                Session.HatchSelectedEggs[
+                    eggName
+                ] = true
+
+                Session.HatchSelectedEggOrder[
+                    #Session.HatchSelectedEggOrder
+                    + 1
+                ] = eggName
+            end
+        end
+
+        scheduleAutoSave()
+    end,
+})
+
+local AutoHatchToggle
+
+AutoHatchToggle =
+    HatchSection:AddToggle({
+        Title = "Auto Hatch",
+        Default = LoadedAutoHatchEnabled,
+        Callback = function(value)
+            local enabled =
+                value == true
+
+            if enabled then
+                if #Session
+                    .HatchSelectedEggOrder
+                    == 0
+                then
+                    notify(
+                        "Auto Hatch",
+                        "Choose at least one egg first.",
+                        2
+                    )
+
+                    if AutoHatchToggle then
+                        task.defer(function()
+                            AutoHatchToggle:Set(
+                                false
+                            )
+                        end)
+                    end
+
+                    return false
+                end
+
+                Session:StartAutoHatch()
+            else
+                Session:StopAutoHatch()
+            end
+        end,
+    })
+
+HatchSection:AddButton({
+    Title = "Hatch Ready Eggs Now",
+    Callback = function()
+        if #Session.HatchSelectedEggOrder
+            == 0
+        then
+            notify(
+                "Auto Hatch",
+                "Choose at least one egg first.",
+                2
+            )
+            return
+        end
+
+        local wasEnabled =
+            Session.AutoHatchEnabled
+
+        if not wasEnabled then
+            Session.AutoHatchEnabled = true
+        end
+
+        local count =
+            hatchSelectedEggs()
+
+        if not wasEnabled then
+            Session.AutoHatchEnabled = false
+        end
+
+        notify(
+            "Auto Hatch",
+            "Requested "
+                .. tostring(count)
+                .. " ready egg(s).",
+            2
+        )
+    end,
+})
+
+
+;(function()
+    local WebhookSection =
+        FarmTab:AddSection({
+            Title = "WEBHOOK",
+            Column = "Left",
+        })
+
+    local MASK =
+        "****************************"
+
+    local function createWebhookUrlControl(
+        title,
+        sessionKey,
+        placeholder
+    )
+        local visible = false
+        local editing = false
+
+        local input =
+            WebhookSection:AddInput({
+                Title = title,
+                Placeholder =
+                    placeholder,
+                Default = "",
+
+                Callback = function(value)
+                    if editing then
+                        Session[sessionKey] =
+                            trimWebhookText(
+                                value
+                            )
+
+                        scheduleAutoSave()
+                    end
+                end,
+            })
+
+        local box =
+            input
+            and input.Box
+
+        local showButton = nil
+
+        local function refresh()
+            if not box then
+                return
+            end
+
+            box.ClipsDescendants =
+                true
+
+            local realValue =
+                tostring(
+                    Session[sessionKey]
+                    or ""
+                )
+
+            if editing
+                or visible
+            then
+                if box.Text
+                    ~= realValue
+                then
+                    box.Text =
+                        realValue
+                end
+
+                box.PlaceholderText =
+                    placeholder
+            else
+                box.Text = ""
+
+                box.PlaceholderText =
+                    realValue ~= ""
+                    and MASK
+                    or placeholder
+            end
+
+            box.TextTransparency = 0
+
+            if showButton then
+                showButton.Text =
+                    visible
+                    and "HIDE"
+                    or "SHOW"
+            end
+        end
+
+        local function sync()
+            if box
+                and (
+                    editing
+                    or visible
+                )
+            then
+                local value =
+                    trimWebhookText(
+                        box.Text
+                    )
+
+                if value ~= "" then
+                    Session[sessionKey] =
+                        value
+                elseif editing then
+                    Session[sessionKey] =
+                        ""
+                end
+
+                scheduleAutoSave()
+            end
+        end
+
+        if box then
+            box.Size =
+                UDim2.new(
+                    1,
+                    -76,
+                    0,
+                    box.Size.Y.Offset
+                )
+
+            box.ClipsDescendants =
+                true
+
+            local parent =
+                box.Parent
+
+            if parent then
+                showButton =
+                    Instance.new(
+                        "TextButton"
+                    )
+
+                showButton.Name =
+                    sessionKey
+                    .. "ShowButton"
+
+                showButton.Text =
+                    "SHOW"
+
+                showButton.Font =
+                    box.Font
+
+                showButton.TextSize = 9
+
+                showButton.TextColor3 =
+                    Color3.fromRGB(
+                        246,
+                        244,
+                        252
+                    )
+
+                showButton.BackgroundColor3 =
+                    Color3.fromRGB(
+                        52,
+                        31,
+                        37
+                    )
+
+                showButton.BorderSizePixel =
+                    0
+
+                showButton.AutoButtonColor =
+                    false
+
+                showButton.Position =
+                    UDim2.new(
+                        1,
+                        -62,
+                        0,
+                        box.Position.Y.Offset
+                    )
+
+                showButton.Size =
+                    UDim2.fromOffset(
+                        52,
+                        box.Size.Y.Offset
+                    )
+
+                showButton.Parent =
+                    parent
+
+                local corner =
+                    Instance.new(
+                        "UICorner"
+                    )
+
+                corner.CornerRadius =
+                    UDim.new(0, 5)
+
+                corner.Parent =
+                    showButton
+
+                local stroke =
+                    Instance.new(
+                        "UIStroke"
+                    )
+
+                stroke.Color =
+                    Color3.fromRGB(
+                        182,
+                        38,
+                        58
+                    )
+
+                stroke.Transparency =
+                    0.35
+
+                stroke.Thickness = 1
+
+                stroke.Parent =
+                    showButton
+
+                showButton.Activated:
+                    Connect(function()
+                        if editing then
+                            sync()
+                        end
+
+                        visible =
+                            not visible
+
+                        refresh()
+                    end)
+            end
+
+            box.Focused:
+                Connect(function()
+                    editing = true
+
+                    box.Text =
+                        tostring(
+                            Session[
+                                sessionKey
+                            ]
+                            or ""
+                        )
+
+                    task.defer(function()
+                        if box
+                            and box:IsFocused()
+                        then
+                            box.CursorPosition =
+                                #box.Text + 1
+                        end
+                    end)
+                end)
+
+            box:
+                GetPropertyChangedSignal(
+                    "Text"
+                ):
+                Connect(function()
+                    if editing then
+                        Session[sessionKey] =
+                            trimWebhookText(
+                                box.Text
+                            )
+                    end
+                end)
+
+            box.FocusLost:
+                Connect(function()
+                    sync()
+                    editing = false
+                    refresh()
+                end)
+
+            refresh()
+        end
+
+        return function()
+            sync()
+        end
+    end
+
+    local syncEggUrl =
+        createWebhookUrlControl(
+            "Egg Pickup Webhook URL",
+            "EggWebhookUrl",
+            "Paste egg webhook URL..."
+        )
+
+    WebhookSection:AddToggle({
+        Title = "Egg Pickup Webhook",
+        Default =
+            LoadedWebhookEggPickupEnabled,
+
+        Callback = function(value)
+            Session.WebhookEggPickupEnabled =
+                value == true
+
+            syncEggUrl()
+            scheduleAutoSave()
+        end,
+    })
+
+    WebhookSection:AddButton({
+        Title = "Test Egg Webhook",
+
+        Callback = function()
+            task.spawn(function()
+                syncEggUrl()
+
+                local embed = {
+                    title =
+                        "EGG WEBHOOK CONNECTED",
+                    description =
+                        "SCOOPHUB PREMIUM egg webhook is working successfully.",
+                    color = 0xE72F3B,
+                    fields = {
+                        {
+                            name = "PLAYER",
+                            value =
+                                LocalPlayer.Name,
+                            inline = true,
+                        },
+                        {
+                            name = "STATUS",
+                            value = "Connected",
+                            inline = true,
+                        },
+                        {
+                            name = "TYPE",
+                            value = "Egg Pickup",
+                            inline = true,
+                        },
+                    },
+                    footer =
+                        buildWebhookFooter(
+                            "Test"
+                        ),
+                }
+
+                local logoUrl =
+                    resolveWebhookImage(
+                        "rbxassetid://97406911955707"
+                    )
+
+                if logoUrl then
+                    embed.thumbnail = {
+                        url = logoUrl,
+                    }
+                end
+
+                local ok, result =
+                    postWebhookEmbed(
+                        embed,
+                        Session.EggWebhookUrl
+                    )
+
+                notify(
+                    "Egg Webhook",
+                    ok
+                        and "Test egg webhook sent successfully."
+                        or (
+                            "Test failed: "
+                            .. tostring(
+                                result
+                            )
+                        ),
+                    3
+                )
+            end)
+        end,
+    })
+
+    local syncHatchUrl =
+        createWebhookUrlControl(
+            "Hatch Webhook URL",
+            "HatchWebhookUrl",
+            "Paste hatch webhook URL..."
+        )
+
+    WebhookSection:AddToggle({
+        Title = "Hatch Webhook",
+        Default =
+            LoadedWebhookHatchEnabled,
+
+        Callback = function(value)
+            Session.WebhookHatchEnabled =
+                value == true
+
+            syncHatchUrl()
+            scheduleAutoSave()
+        end,
+    })
+
+    WebhookSection:AddButton({
+        Title = "Test Hatch Webhook",
+
+        Callback = function()
+            task.spawn(function()
+                syncHatchUrl()
+
+                local embed = {
+                    title =
+                        "HATCH WEBHOOK CONNECTED",
+                    description =
+                        "SCOOPHUB PREMIUM hatch webhook is working successfully.",
+                    color = 0xE72F3B,
+                    fields = {
+                        {
+                            name = "PLAYER",
+                            value =
+                                LocalPlayer.Name,
+                            inline = true,
+                        },
+                        {
+                            name = "STATUS",
+                            value = "Connected",
+                            inline = true,
+                        },
+                        {
+                            name = "TYPE",
+                            value = "Auto Hatch",
+                            inline = true,
+                        },
+                    },
+                    footer =
+                        buildWebhookFooter(
+                            "Test"
+                        ),
+                }
+
+                local logoUrl =
+                    resolveWebhookImage(
+                        "rbxassetid://97406911955707"
+                    )
+
+                if logoUrl then
+                    embed.thumbnail = {
+                        url = logoUrl,
+                    }
+                end
+
+                local ok, result =
+                    postWebhookEmbed(
+                        embed,
+                        Session.HatchWebhookUrl
+                    )
+
+                notify(
+                    "Hatch Webhook",
+                    ok
+                        and "Test hatch webhook sent successfully."
+                        or (
+                            "Test failed: "
+                            .. tostring(
+                                result
+                            )
+                        ),
+                    3
+                )
+            end)
+        end,
+    })
+end)()
+
+local GearSection = ShopTab:AddSection({
+    Title = "GEARS",
+    Column = "Left",
+})
+
+local FoodSection = ShopTab:AddSection({
+    Title = "FOOD",
+    Column = "Right",
+})
+
+local GearOptions =
+    getShopCategoryItems("Gears")
+
+local FoodOptions =
+    getShopCategoryItems("Food")
+
+local function filterSavedShopSelection(order, selected, options)
+    local allowed = {}
+
+    for index = 1, #options do
+        allowed[options[index]] = true
+    end
+
+    local filtered = {}
+    clearTableCompat(selected)
+
+    for index = 1, #order do
+        local itemName = order[index]
+
+        if allowed[itemName] then
+            filtered[#filtered + 1] = itemName
+            selected[itemName] = true
+        end
+    end
+
+    clearTableCompat(order)
+
+    for index = 1, #filtered do
+        order[index] = filtered[index]
+    end
+end
+
+filterSavedShopSelection(
+    Session.SelectedGearOrder,
+    Session.SelectedGears,
+    GearOptions
+)
+
+filterSavedShopSelection(
+    Session.SelectedFoodOrder,
+    Session.SelectedFood,
+    FoodOptions
+)
+
+Session.GearDropdown =
+    GearSection:AddDropdown({
+        Title = "Select Gears",
+        Content =
+            "Choose one or more gears to auto buy.",
+        Multi = true,
+        Options = GearOptions,
+        Default = Session.SelectedGearOrder,
+        EmptyText = "No gears selected",
+        SearchPlaceholder = "Search gear...",
+
+        Callback = function(values)
+            setShopSelection(
+                Session.SelectedGears,
+                Session.SelectedGearOrder,
+                values
+            )
+
+            if Session.GearAutoBuyEnabled then
+                updateGearAutoBuy()
+            end
+
+            scheduleAutoSave()
+        end,
+    })
+
+GearSection:AddToggle({
+    Title = "Auto Buy Gears",
+    Content =
+        "Automatically buy the selected gears when available.",
+    Default = Session.GearAutoBuyEnabled,
+
+    Callback = function(value)
+        if Session.Closed
+            or Library.Unloaded
+        then
+            return false
+        end
+
+        local enabled =
+            value == true
+
+        if enabled
+            and next(Session.SelectedGears)
+                == nil
+        then
+            notify(
+                "Shop",
+                "Select at least one gear first.",
+                2
+            )
+
+            return false
+        end
+
+        Session.GearAutoBuyEnabled =
+            enabled
+
+        scheduleAutoSave()
+
+        applyShopCategoryAutoBuy(
+            "Gears",
+            Session.SelectedGears,
+            enabled
+        )
+
+        notify(
+            "Gears",
+            enabled
+                and "Auto Buy enabled for selected gears."
+                or "Auto Buy gears disabled.",
+            2
+        )
+    end,
+})
+
+Session.FoodDropdown =
+    FoodSection:AddDropdown({
+        Title = "Select Food",
+        Content =
+            "Choose one or more food items to auto buy.",
+        Multi = true,
+        Options = FoodOptions,
+        Default = Session.SelectedFoodOrder,
+        EmptyText = "No food selected",
+        SearchPlaceholder = "Search food...",
+
+        Callback = function(values)
+            setShopSelection(
+                Session.SelectedFood,
+                Session.SelectedFoodOrder,
+                values
+            )
+
+            if Session.FoodAutoBuyEnabled then
+                updateFoodAutoBuy()
+            end
+
+            scheduleAutoSave()
+        end,
+    })
+
+FoodSection:AddToggle({
+    Title = "Auto Buy Food",
+    Content =
+        "Automatically buy the selected food when available.",
+    Default = Session.FoodAutoBuyEnabled,
+
+    Callback = function(value)
+        if Session.Closed
+            or Library.Unloaded
+        then
+            return false
+        end
+
+        local enabled =
+            value == true
+
+        if enabled
+            and next(Session.SelectedFood)
+                == nil
+        then
+            notify(
+                "Shop",
+                "Select at least one food item first.",
+                2
+            )
+
+            return false
+        end
+
+        Session.FoodAutoBuyEnabled =
+            enabled
+
+        scheduleAutoSave()
+
+        applyShopCategoryAutoBuy(
+            "Food",
+            Session.SelectedFood,
+            enabled
+        )
+
+        notify(
+            "Food",
+            enabled
+                and "Auto Buy enabled for selected food."
+                or "Auto Buy food disabled.",
+            2
+        )
+    end,
+})
+
+GearSection:AddButton({
+    Title = "Refresh Shop",
+    ButtonText = "REFRESH",
+
+    Callback = function()
+        if Session.Closed then
+            return
+        end
+
+        pcall(function()
+            ShopStock:FireServer()
+        end)
+
+        local newGearOptions =
+            getShopCategoryItems("Gears")
+
+        local newFoodOptions =
+            getShopCategoryItems("Food")
+
+        if Session.GearDropdown then
+            Session.GearDropdown:SetOptions(
+                newGearOptions,
+                true
+            )
+
+            Session.GearDropdown:Set(
+                Session.SelectedGearOrder,
+                false
+            )
+        end
+
+        if Session.FoodDropdown then
+            Session.FoodDropdown:SetOptions(
+                newFoodOptions,
+                true
+            )
+
+            Session.FoodDropdown:Set(
+                Session.SelectedFoodOrder,
+                false
+            )
+        end
+
+        notify(
+            "Shop",
+            "Shop item lists refreshed.",
+            2
+        )
+    end,
+})
+
+pcall(function()
+    local teleportConnection =
+        LocalPlayer.OnTeleport:Connect(function()
+            saveConfigNow()
+        end)
+
+    Session.Connections[#Session.Connections + 1] =
+        teleportConnection
+end)
+
+local removingConnection =
+    Players.PlayerRemoving:Connect(function(player)
+        if player == LocalPlayer then
+            saveConfigNow()
+        end
+    end)
+
+Session.Connections[#Session.Connections + 1] =
+    removingConnection
+
+table.insert(
+    Session.Connections,
+    ActiveEggs.ChildAdded:Connect(function()
+        task.defer(function()
+            Session:UpdateEggESP()
+        end)
+    end)
+)
+
+table.insert(
+    Session.Connections,
+    ActiveEggs.ChildRemoved:Connect(function()
+        task.defer(function()
+            Session:UpdateEggESP()
+        end)
+    end)
+)
+
+table.insert(
+    Session.Connections,
+    Workspace.ChildAdded:Connect(function(child)
+        if child.Name == "RenderedEggs" then
+            task.defer(function()
+                Session:UpdateEggESP()
+            end)
+        end
+    end)
+)
+
+task.spawn(function()
+    while not Session.Closed do
+        if Session.ESPEnabled then
+            Session:UpdateEggESP()
+        end
+
+        task.wait(0.35)
+    end
+end)
+
+task.spawn(function()
+    while not Session.Closed do
+        task.wait(10)
+
+        if not Session.Closed then
+            saveConfigNow()
+        end
+    end
+end)
+
+task.defer(function()
+    if Session.Closed then
+        return
+    end
+
+    if LoadedLowGraphicsEnabled then
+        setLowGraphicsMode(true)
+    end
+
+    if Session.WalkSpeedEnabled
+        and LocalPlayer.Character
+    then
+        bindWalkSpeedCharacter(LocalPlayer.Character)
+    end
+
+    if Session.ESPEnabled then
+        Session:UpdateEggESP()
+    end
+
+    if Session.GearAutoBuyEnabled
+        and next(Session.SelectedGears) ~= nil
+    then
+        updateGearAutoBuy()
+    end
+
+    if Session.FoodAutoBuyEnabled
+        and next(Session.SelectedFood) ~= nil
+    then
+        updateFoodAutoBuy()
+    end
+
+    if LoadedAutoFarmEnabled then
+        Session:StartAutoFarm()
+    end
+
+    if LoadedAutoHatchEnabled then
+        Session:StartAutoHatch()
+    end
+
+    if LoadedAutoEquipBestEnabled then
+        Session:StartAutoEquipBest()
+    end
+
+    saveConfigNow()
+end)
+
+Session:RefreshEggs(true)
+
+print("[SCOOPHUB PREMIUM] Ride A Pet loaded successfully.")
