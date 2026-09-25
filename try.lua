@@ -10,7 +10,7 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 
 local LIBRARY_URL =
-    "https://raw.githubusercontent.com/rhiannamilagros-png/new/refs/heads/main/new5.lua"
+    "https://raw.githubusercontent.com/rhiannamilagros-png/new/refs/heads/main/new11.lua"
 
 local ActiveEggs = (ReplicatedStorage:FindFirstChild("ServerData") or ReplicatedStorage)
     :WaitForChild("ActiveEggs")
@@ -8108,3 +8108,10 @@ end)
 Session:RefreshEggs(true)
 
 print("[SCOOPHUB PREMIUM] Ride A Pet loaded successfully.")
+
+
+
+
+-- fauoehfaeuio
+
+-- fuaeioghfiaueh
